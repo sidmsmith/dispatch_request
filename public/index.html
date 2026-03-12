@@ -56,7 +56,19 @@
     .readonly-field { background: color-mix(in srgb, var(--input-bg) 90%, #d1d5db 10%); }
     .field-wrap { position: relative; }
     .stop-card { border: 1px dashed var(--border-color); border-radius: 10px; padding: 0.7rem; margin-bottom: 0.75rem; }
+    .stop-card.alt { background: color-mix(in srgb, var(--input-bg) 90%, var(--border-color) 10%); }
     .stop-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.5rem; }
+    .stop-actions { display: flex; gap: 0.4rem; align-items: center; }
+    .drag-handle-btn {
+      border: 1px solid var(--input-border);
+      background: transparent;
+      color: var(--text-muted);
+      border-radius: 6px;
+      padding: 0.2rem 0.45rem;
+      cursor: grab;
+    }
+    .drag-handle-btn:active { cursor: grabbing; }
+    .stop-card.drag-over { outline: 2px solid var(--primary-color); }
     .mini-grid th, .mini-grid td { font-size: 0.88rem; vertical-align: middle; }
     .muted-note { font-size: 0.82rem; color: var(--text-muted); margin-top: 0.25rem; }
     #mainScreen { display: none; }
@@ -180,6 +192,7 @@
     let stops = [];
     let facilityOptionsHtml = '';
     let idSeq = 1;
+    let draggingStopId = null;
     const PRODUCT_CLASS_WEIGHT_DEFAULTS_RAW = {
       '12BR': 1500, '12OM': 1500, 'ACCSSRY': 1100, 'ACID': 2150, 'APPAREL': 1000,
       'AUTO': 1600, 'BATHBODY': 1150, 'CLOTHES': 1000, 'CLOTHING': 1000, 'COSMETIC': 1150,
@@ -334,6 +347,16 @@
       });
       renderStops(); validateForm();
     }
+    function moveStop(dragId, targetId) {
+      if (!dragId || !targetId || dragId === targetId) return;
+      const fromIdx = stops.findIndex(s => s.id === dragId);
+      const toIdx = stops.findIndex(s => s.id === targetId);
+      if (fromIdx < 0 || toIdx < 0) return;
+      const [moved] = stops.splice(fromIdx, 1);
+      stops.splice(toIdx, 0, moved);
+      renderStops();
+      validateForm();
+    }
     function removeStop(id) {
       if (stops.length <= 1) return;
       stops = stops.filter(s => s.id !== id);
@@ -353,15 +376,16 @@
     function renderStops() {
       const wrap = document.getElementById('stopsContainer');
       wrap.innerHTML = '';
-      stops.forEach(stop => {
+      stops.forEach((stop, idx) => {
+        stop.sequence = idx + 1;
         const card = document.createElement('div');
-        card.className = 'stop-card';
+        card.className = `stop-card${idx % 2 === 1 ? ' alt' : ''}`;
+        card.dataset.stopId = String(stop.id);
         card.innerHTML = `
           <div class="stop-header">
             <strong>Stop #${stop.sequence}</strong>
-            <div class="d-flex gap-2 align-items-center">
-              <label class="small text-muted mb-0">Sequence</label>
-              <input type="number" min="1" class="form-control form-control-sm" style="width:78px;" value="${stop.sequence}" data-role="seq" />
+            <div class="stop-actions">
+              <button class="drag-handle-btn" data-role="drag-handle" draggable="true" title="Drag to reorder stop"><i class="fas fa-grip-vertical"></i></button>
               <button class="btn btn-outline-danger btn-sm" data-role="remove-stop"><i class="fas fa-trash"></i></button>
             </div>
           </div>
@@ -377,8 +401,25 @@
           </div>
           <button class="btn btn-outline-primary btn-sm" data-role="add-line"><i class="fas fa-plus"></i> Add Line</button>
         `;
-        const seqInput = card.querySelector('[data-role="seq"]');
-        seqInput.addEventListener('input', () => { stop.sequence = Number(seqInput.value || stop.sequence); validateForm(); });
+        const dragHandle = card.querySelector('[data-role="drag-handle"]');
+        dragHandle.addEventListener('dragstart', () => {
+          draggingStopId = stop.id;
+        });
+        dragHandle.addEventListener('dragend', () => {
+          draggingStopId = null;
+          document.querySelectorAll('.stop-card').forEach(c => c.classList.remove('drag-over'));
+        });
+        card.addEventListener('dragover', (e) => {
+          e.preventDefault();
+          if (!draggingStopId || draggingStopId === stop.id) return;
+          card.classList.add('drag-over');
+        });
+        card.addEventListener('dragleave', () => card.classList.remove('drag-over'));
+        card.addEventListener('drop', (e) => {
+          e.preventDefault();
+          card.classList.remove('drag-over');
+          moveStop(draggingStopId, stop.id);
+        });
         card.querySelector('[data-role="remove-stop"]').addEventListener('click', () => removeStop(stop.id));
         card.querySelector('[data-role="add-line"]').addEventListener('click', () => addProductLine(stop.id));
 
