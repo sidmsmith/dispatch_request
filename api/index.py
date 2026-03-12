@@ -103,14 +103,19 @@ def facilities():
 
     url = f"https://{API_HOST}/facility/api/facility/facility/search"
     payload = {
-        "Query": "FacilityId is not null",
         "Template": {
             "FacilityId": None,
             "Description": None,
             "FacilityTypeTerminal": None,
+            "IsActive": None,
             "FacilityAddress": {"City": None, "State": None},
         },
-        "Size": 3000,
+        "Size": 9999,
+    }
+    terminals_payload = {
+        "Size": 1000,
+        "Query": "FacilityTypeTerminal = 'true' AND IsActive = 'true'",
+        "Template": payload["Template"],
     }
     try:
         r = requests.post(
@@ -120,25 +125,20 @@ def facilities():
             timeout=45,
             verify=False,
         )
-        rows = []
-        if r.ok:
-            rows = r.json().get("data", []) or []
-        # Fallback for tenants where the null-check query syntax is unsupported.
-        if not rows:
-            fallback_payload = {
-                "Template": payload["Template"],
-                "Size": payload["Size"],
-            }
-            rf = requests.post(
-                url,
-                json=fallback_payload,
-                headers=manhattan_headers(org, token),
-                timeout=45,
-                verify=False,
-            )
-            if not rf.ok:
-                return jsonify({"success": False, "error": f"HTTP {rf.status_code}: {rf.text[:400]}"})
-            rows = rf.json().get("data", []) or []
+        if not r.ok:
+            return jsonify({"success": False, "error": f"HTTP {r.status_code}: {r.text[:400]}"})
+        rows = r.json().get("data", []) or []
+
+        rt = requests.post(
+            url,
+            json=terminals_payload,
+            headers=manhattan_headers(org, token),
+            timeout=45,
+            verify=False,
+        )
+        if not rt.ok:
+            return jsonify({"success": False, "error": f"HTTP {rt.status_code}: {rt.text[:400]}"})
+        terminal_rows = rt.json().get("data", []) or []
         facilities_out = []
         terminals_out = []
         for f in rows:
@@ -154,12 +154,21 @@ def facilities():
                 "Description": desc,
                 "City": city,
                 "State": state,
-                "Display": f"{fid} - {desc}" if desc else fid,
+                "Display": f"{fid}: {desc}: {city}" if desc else (f"{fid}: {city}" if city else fid),
                 "FacilityTypeTerminal": bool(f.get("FacilityTypeTerminal")),
+                "IsActive": bool(f.get("IsActive")) if f.get("IsActive") is not None else None,
             }
             facilities_out.append(row)
-            if row["FacilityTypeTerminal"]:
-                terminals_out.append({"TerminalId": fid, "Description": desc, "Display": row["Display"]})
+
+        for t in terminal_rows:
+            tid = (t.get("FacilityId") or "").strip()
+            if not tid:
+                continue
+            tdesc = (t.get("Description") or "").strip()
+            taddr = t.get("FacilityAddress") or {}
+            tcity = (taddr.get("City") or "").strip()
+            tdisplay = f"{tid}: {tdesc}: {tcity}" if tdesc else (f"{tid}: {tcity}" if tcity else tid)
+            terminals_out.append({"TerminalId": tid, "Description": tdesc, "City": tcity, "Display": tdisplay})
 
         facilities_out.sort(key=lambda x: (x.get("FacilityId") or "").lower())
         terminals_out.sort(key=lambda x: (x.get("TerminalId") or "").lower())

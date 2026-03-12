@@ -55,17 +55,13 @@
     .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0.8rem 1rem; }
     .readonly-field { background: color-mix(in srgb, var(--input-bg) 90%, #d1d5db 10%); }
     .field-wrap { position: relative; }
-    .suggestions { position: absolute; z-index: 25; left: 0; right: 0; top: calc(100% + 4px); background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 8px; max-height: 220px; overflow: auto; box-shadow: 0 6px 18px rgba(0,0,0,0.08); display: none; }
-    .suggestions.visible { display: block; }
-    .s-item { padding: 0.45rem 0.55rem; font-size: 0.9rem; cursor: pointer; border-bottom: 1px solid var(--border-color); }
-    .s-item:last-child { border-bottom: none; }
-    .s-item:hover { background: rgba(51,154,240,0.12); }
     .stop-card { border: 1px dashed var(--border-color); border-radius: 10px; padding: 0.7rem; margin-bottom: 0.75rem; }
     .stop-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.5rem; }
     .mini-grid th, .mini-grid td { font-size: 0.88rem; vertical-align: middle; }
     .muted-note { font-size: 0.82rem; color: var(--text-muted); margin-top: 0.25rem; }
     #mainScreen { display: none; }
-    @media (max-width: 900px) { .grid-2 { grid-template-columns: 1fr; } }
+    .submit-wrap { text-align: center; }
+    #submitStatus { text-align: center; }
   </style>
 </head>
 <body>
@@ -131,9 +127,8 @@
         <h6>Origin</h6>
         <div class="field-wrap">
           <label class="form-label fw-semibold">Origin Facility <span class="text-danger">*</span></label>
-          <input id="originInput" class="form-control" placeholder="Search and select a facility" autocomplete="off" />
-          <div id="originSuggest" class="suggestions"></div>
-          <div class="muted-note">Must be selected from Facility Master.</div>
+          <select id="originSelect" class="form-select"></select>
+          <div class="muted-note">Must match an existing facility in Facility Master.</div>
         </div>
       </div>
 
@@ -165,8 +160,8 @@
         </div>
       </div>
 
-      <div class="d-flex gap-2">
-        <button id="submitBtn" class="btn btn-primary"><i class="fas fa-paper-plane"></i> Submit</button>
+      <div class="submit-wrap">
+        <button id="submitBtn" class="btn btn-success px-5"><i class="fas fa-paper-plane"></i> Submit</button>
       </div>
       <div id="submitStatus" class="status info"></div>
     </div>
@@ -176,7 +171,7 @@
     let token = null;
     let allFacilities = [];
     let stops = [];
-    let originSelection = null;
+    let facilityOptionsHtml = '';
     let idSeq = 1;
     const PRODUCT_CLASSES = ['Grocery', 'Chill', 'Frozen'];
 
@@ -244,46 +239,17 @@
       document.getElementById('tractorType').value = d.tractorType;
       document.getElementById('trailerType').value = d.trailerType;
     }
-    function facilityMatches(query) {
-      const q = (query || '').trim().toLowerCase();
-      if (!q) return allFacilities.slice(0, 12);
-      return allFacilities.filter(f =>
-        (f.FacilityId || '').toLowerCase().includes(q) ||
-        (f.Description || '').toLowerCase().includes(q) ||
-        (f.City || '').toLowerCase().includes(q)
-      ).slice(0, 12);
-    }
-    function showSuggestions(listEl, rows, onPick) {
-      listEl.innerHTML = '';
-      rows.forEach(r => {
-        const d = document.createElement('div');
-        d.className = 's-item';
-        d.textContent = `${r.FacilityId}${r.Description ? ' - ' + r.Description : ''}`;
-        d.addEventListener('mousedown', (e) => { e.preventDefault(); onPick(r); });
-        listEl.appendChild(d);
-      });
-      listEl.classList.toggle('visible', rows.length > 0);
-    }
-    function bindOriginPicker() {
-      const input = document.getElementById('originInput');
-      const list = document.getElementById('originSuggest');
-      input.addEventListener('input', () => {
-        originSelection = null;
-        showSuggestions(list, facilityMatches(input.value), pick => {
-          originSelection = pick;
-          input.value = `${pick.FacilityId}${pick.Description ? ' - ' + pick.Description : ''}`;
-          list.classList.remove('visible');
-          validateForm();
-        });
-        validateForm();
-      });
-      input.addEventListener('focus', () => showSuggestions(list, facilityMatches(input.value), pick => {
-        originSelection = pick; input.value = `${pick.FacilityId}${pick.Description ? ' - ' + pick.Description : ''}`; list.classList.remove('visible'); validateForm();
-      }));
-      input.addEventListener('blur', () => setTimeout(() => list.classList.remove('visible'), 120));
+    function facilityLabel(f) {
+      const fid = (f.FacilityId || '').trim();
+      const desc = (f.Description || '').trim();
+      const city = (f.City || '').trim();
+      if (desc && city) return `${fid}: ${desc}: ${city}`;
+      if (desc) return `${fid}: ${desc}`;
+      if (city) return `${fid}: ${city}`;
+      return fid;
     }
     function addStop() {
-      stops.push({ id: idSeq++, sequence: stops.length + 1, facilitySelection: null, facilityText: '', products: [{ productClass: PRODUCT_CLASSES[0], pallets: '' }] });
+      stops.push({ id: idSeq++, sequence: stops.length + 1, deliveryFacilityId: '', products: [{ productClass: PRODUCT_CLASSES[0], pallets: '' }] });
       renderStops(); validateForm();
     }
     function removeStop(id) {
@@ -312,10 +278,9 @@
               <button class="btn btn-outline-danger btn-sm" data-role="remove-stop"><i class="fas fa-trash"></i></button>
             </div>
           </div>
-          <div class="field-wrap mb-2">
+          <div class="mb-2">
             <label class="form-label fw-semibold">Delivery Facility <span class="text-danger">*</span></label>
-            <input class="form-control" data-role="facility-input" placeholder="Search and select a facility" value="${stop.facilityText || ''}" autocomplete="off" />
-            <div class="suggestions" data-role="facility-suggest"></div>
+            <select class="form-select" data-role="facility-select">${facilityOptionsHtml}</select>
           </div>
           <div class="table-responsive">
             <table class="table table-sm mini-grid mb-1">
@@ -345,28 +310,12 @@
           tbody.appendChild(tr);
         });
 
-        const facilityInput = card.querySelector('[data-role="facility-input"]');
-        const facilitySuggest = card.querySelector('[data-role="facility-suggest"]');
-        facilityInput.addEventListener('input', () => {
-          stop.facilitySelection = null;
-          stop.facilityText = facilityInput.value;
-          showSuggestions(facilitySuggest, facilityMatches(facilityInput.value), pick => {
-            stop.facilitySelection = pick;
-            stop.facilityText = `${pick.FacilityId}${pick.Description ? ' - ' + pick.Description : ''}`;
-            facilityInput.value = stop.facilityText;
-            facilitySuggest.classList.remove('visible');
-            validateForm();
-          });
+        const facilitySelect = card.querySelector('[data-role="facility-select"]');
+        facilitySelect.value = stop.deliveryFacilityId || '';
+        facilitySelect.addEventListener('change', () => {
+          stop.deliveryFacilityId = facilitySelect.value;
           validateForm();
         });
-        facilityInput.addEventListener('focus', () => showSuggestions(facilitySuggest, facilityMatches(facilityInput.value), pick => {
-          stop.facilitySelection = pick;
-          stop.facilityText = `${pick.FacilityId}${pick.Description ? ' - ' + pick.Description : ''}`;
-          facilityInput.value = stop.facilityText;
-          facilitySuggest.classList.remove('visible');
-          validateForm();
-        }));
-        facilityInput.addEventListener('blur', () => setTimeout(() => facilitySuggest.classList.remove('visible'), 120));
         wrap.appendChild(card);
       });
     }
@@ -375,10 +324,11 @@
       const submitStatus = document.getElementById('submitStatus');
       const terminal = document.getElementById('terminalSelect').value;
       if (!terminal) { submitBtn.disabled = true; setStatus(submitStatus, 'Terminal is required.', 'error'); return false; }
-      if (!originSelection) { submitBtn.disabled = true; setStatus(submitStatus, 'Origin must be a valid facility in the master.', 'error'); return false; }
+      const originFacilityId = document.getElementById('originSelect').value;
+      if (!originFacilityId) { submitBtn.disabled = true; setStatus(submitStatus, 'Origin must be a valid facility in the master.', 'error'); return false; }
       if (!stops.length) { submitBtn.disabled = true; setStatus(submitStatus, 'At least one delivery stop is required.', 'error'); return false; }
       for (const s of stops) {
-        if (!s.facilitySelection) { submitBtn.disabled = true; setStatus(submitStatus, `Stop ${s.sequence}: Delivery Facility must be selected from master.`, 'error'); return false; }
+        if (!s.deliveryFacilityId) { submitBtn.disabled = true; setStatus(submitStatus, `Stop ${s.sequence}: Delivery Facility must be selected from master.`, 'error'); return false; }
         if (!s.products.length) { submitBtn.disabled = true; setStatus(submitStatus, `Stop ${s.sequence}: At least one Product Class line is required.`, 'error'); return false; }
         for (const p of s.products) {
           if (!p.productClass) { submitBtn.disabled = true; setStatus(submitStatus, `Stop ${s.sequence}: Product Class is required.`, 'error'); return false; }
@@ -408,14 +358,14 @@
           tractorType: document.getElementById('tractorType').value,
           trailerType: document.getElementById('trailerType').value
         },
-        originFacilityId: originSelection?.FacilityId || null,
+        originFacilityId: document.getElementById('originSelect').value || null,
         pickupStart: document.getElementById('pickupStart').value,
         pickupEnd: document.getElementById('pickupEnd').value,
         deliveryStart: document.getElementById('deliveryStart').value,
         deliveryEnd: document.getElementById('deliveryEnd').value,
         stops: stops.map(s => ({
           sequence: Number(s.sequence),
-          deliveryFacilityId: s.facilitySelection?.FacilityId || null,
+          deliveryFacilityId: s.deliveryFacilityId || null,
           productLines: s.products.map(p => ({ productClass: p.productClass, pallets: Number(p.pallets) }))
         }))
       };
@@ -439,6 +389,13 @@
       const res = await api('facilities', { org, token });
       if (!res.success) { setStatus(submitStatus, res.error || 'Failed loading facilities.', 'error'); return false; }
       allFacilities = (res.facilities || []).sort((a, b) => (a.FacilityId || '').localeCompare(b.FacilityId || ''));
+      facilityOptionsHtml = '<option value="">-- Select Facility --</option>' +
+        allFacilities.map(f => `<option value="${f.FacilityId}">${facilityLabel(f)}</option>`).join('');
+
+      const originSelect = document.getElementById('originSelect');
+      originSelect.innerHTML = facilityOptionsHtml;
+      originSelect.addEventListener('change', validateForm);
+
       const terminalSel = document.getElementById('terminalSelect');
       terminalSel.innerHTML = '<option value="">-- Select Terminal --</option>';
       (res.terminals || []).forEach(t => {
@@ -449,6 +406,9 @@
       });
       if (res.terminals?.length) terminalSel.value = res.terminals[0].TerminalId;
       setTerminalDefaults();
+      stops = [];
+      idSeq = 1;
+      addStop();
       setStatus(submitStatus, 'Terminals/facilities loaded.', 'success');
       return true;
     }
@@ -465,8 +425,6 @@
       document.getElementById('mainScreen').style.display = 'block';
       await loadFormData();
       applyDateDefaults();
-      if (!stops.length) addStop();
-      bindOriginPicker();
       validateForm();
     }
 
