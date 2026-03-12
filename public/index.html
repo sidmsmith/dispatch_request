@@ -17,22 +17,27 @@
     }
     html, body { height: 100%; margin: 0; background: var(--bg-color); color: var(--text-color); }
     body { padding: 1rem; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; }
-    .card-shell { max-width: 1150px; margin: 0 auto; background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 12px; padding: 1rem 1.25rem 1.25rem; }
-    .header-row { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 1rem; }
-    .header-title { margin: 0; font-size: 1.55rem; font-weight: 700; color: var(--primary-color); }
+    .card-shell { max-width: 1150px; margin: 0 auto; background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 12px; padding: 1rem 1.25rem 1.25rem; position: relative; }
+    .header-row { display: flex; justify-content: center; margin-bottom: 1rem; position: relative; }
+    .header-center { display: flex; flex-direction: column; align-items: center; width: 100%; }
+    .header-title { margin: 0; font-size: 1.55rem; font-weight: 700; color: var(--header-text); text-align: center; }
     .app-version { font-size: 0.78rem; color: var(--text-muted); font-weight: 600; }
-    .logo-wrapper { margin-bottom: 0.2rem; }
-    .logo-wrapper img.app-logo { max-height: 52px; width: auto; object-fit: contain; }
+    .logo-wrapper { display: flex; justify-content: center; width: 100%; margin-bottom: 0.25rem; }
+    .logo-wrapper img.app-logo { max-height: 24px; width: auto; display: block; }
     .theme-dropdown { position: relative; }
     .theme-selector-btn {
-      width: 36px; height: 36px; border-radius: 8px;
-      border: 1px solid var(--input-border);
-      background: var(--input-bg);
+      position: absolute;
+      top: 0.5rem;
+      right: 0.5rem;
+      background: transparent;
+      border: none;
       color: var(--text-muted);
-      display: inline-flex; align-items: center; justify-content: center;
+      font-size: 1.4rem;
       cursor: pointer;
+      transition: transform 0.3s ease;
+      z-index: 5;
     }
-    .theme-selector-btn:hover { color: var(--text-color); border-color: var(--input-focus-border); }
+    .theme-selector-btn:hover { transform: rotate(90deg); }
     .theme-popup { position: absolute; right: 0; top: 110%; width: 200px; background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 10px; padding: 0.45rem; display: none; z-index: 30; box-shadow: 0 6px 20px rgba(0,0,0,0.08); }
     .theme-popup.visible { display: block; }
     .theme-option { width: 100%; text-align: left; border: none; background: transparent; color: var(--text-color); padding: 0.4rem 0.5rem; border-radius: 6px; font-size: 0.9rem; }
@@ -66,7 +71,7 @@
 <body>
   <div class="card-shell">
     <div class="header-row">
-      <div>
+      <div class="header-center">
         <div class="logo-wrapper">
           <img src="/manhattan-logo.png" alt="Manhattan Associates" class="app-logo" onerror="this.style.display='none'" />
         </div>
@@ -183,6 +188,14 @@
       rockline: {'--bg-color':'#ffffff','--text-color':'#2d2d2d','--text-muted':'#6b7d66','--card-bg':'#ffffff','--border-color':'#d4ddd0','--input-bg':'#f0f2ee','--input-border':'#b8c9b3','--input-focus-bg':'#ffffff','--input-focus-border':'#6EB43F','--input-focus-shadow':'rgba(110,180,63,0.25)','--primary-color':'#6EB43F','--primary-hover':'#5a9a32','--success-color':'#6EB43F','--danger-color':'#c62828','--header-text':'#2d2d2d'},
       hyvee: {'--bg-color':'#ffffff','--text-color':'#1f1f1f','--text-muted':'#6c757d','--card-bg':'#ffffff','--border-color':'#e0d6d6','--input-bg':'#faf7f7','--input-border':'#d4c9c9','--input-focus-bg':'#ffffff','--input-focus-border':'#E2231A','--input-focus-shadow':'rgba(226,35,26,0.25)','--primary-color':'#E2231A','--primary-hover':'#c41e16','--success-color':'#28a745','--danger-color':'#dc3545','--header-text':'#1f1f1f'}
     };
+    const THEME_LOGOS = {
+      light: '/manhattan-logo.png',
+      dark: '/manhattan-logo.png',
+      manhattan: '/manhattan-logo.png',
+      loves: '/loves-logo.png',
+      rockline: '/rockline_logo.png',
+      hyvee: '/hyvee-logo.png'
+    };
 
     function setStatus(el, text, type = 'info') { el.textContent = text || ''; el.className = `status ${type}`; }
     async function api(path, body) {
@@ -192,6 +205,11 @@
     function applyTheme(name) {
       const vars = THEMES[name]; if (!vars) return;
       for (const [k, v] of Object.entries(vars)) document.documentElement.style.setProperty(k, v);
+      const logo = document.querySelector('.app-logo');
+      if (logo && THEME_LOGOS[name]) {
+        logo.src = THEME_LOGOS[name];
+        logo.style.display = '';
+      }
       localStorage.setItem('dispatch_request_theme', name);
       document.querySelectorAll('.theme-option').forEach(o => o.classList.toggle('active', o.dataset.theme === name));
     }
