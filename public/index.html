@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Manual Dispatch Request v1.0.0</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    :root {
+      --bg-color: #ffffff;
+      --text-color: #1f2933;
+      --text-muted: #616e7c;
+      --card-bg: #f8fafc;
+      --border-color: #d9e2ec;
+      --input-bg: #ffffff;
+      --input-border: #cbd5e0;
+      --input-focus-bg: #ffffff;
+      --input-focus-border: #339af0;
+      --input-focus-shadow: rgba(51,154,240,0.25);
+      --primary-color: #339af0;
+      --primary-hover: #228be6;
+      --success-color: #28a745;
+      --danger-color: #dc3545;
+      --header-bg: #d9e2ec;
+      --header-text: #1f2933;
+    }
+    html, body {
+      height: 100%;
+      margin: 0;
+      background: var(--bg-color);
+      color: var(--text-color);
+    }
+    body {
+      padding: 1rem;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+    }
+    .card-shell {
+      max-width: 980px;
+      margin: 0 auto;
+      background: var(--card-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 1rem 1.25rem 1.25rem;
+    }
+    .header-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 1rem;
+    }
+    .header-title {
+      margin: 0;
+      font-size: 1.55rem;
+      font-weight: 700;
+      color: var(--header-text);
+    }
+    .app-version {
+      font-size: 0.78rem;
+      color: var(--text-muted);
+      font-weight: 600;
+    }
+    .theme-dropdown {
+      position: relative;
+    }
+    .theme-btn {
+      border: 1px solid var(--input-border);
+      background: var(--input-bg);
+      color: var(--text-color);
+      border-radius: 8px;
+      padding: 0.35rem 0.6rem;
+    }
+    .theme-popup {
+      position: absolute;
+      right: 0;
+      top: 110%;
+      width: 200px;
+      background: var(--card-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 10px;
+      padding: 0.45rem;
+      display: none;
+      z-index: 20;
+      box-shadow: 0 6px 20px rgba(0,0,0,0.08);
+    }
+    .theme-popup.visible { display: block; }
+    .theme-option {
+      width: 100%;
+      text-align: left;
+      border: none;
+      background: transparent;
+      color: var(--text-color);
+      padding: 0.4rem 0.5rem;
+      border-radius: 6px;
+      font-size: 0.9rem;
+    }
+    .theme-option:hover, .theme-option.active {
+      background: rgba(51,154,240,0.12);
+    }
+    .form-control, .form-select {
+      background: var(--input-bg);
+      border: 1px solid var(--input-border);
+      color: var(--text-color);
+    }
+    .form-control:focus, .form-select:focus {
+      background: var(--input-focus-bg);
+      border-color: var(--input-focus-border);
+      box-shadow: 0 0 0 0.2rem var(--input-focus-shadow);
+      color: var(--text-color);
+    }
+    .btn-primary { background: var(--primary-color); border-color: var(--primary-color); }
+    .btn-primary:hover { background: var(--primary-hover); border-color: var(--primary-hover); }
+    .btn-success { background: var(--success-color); border-color: var(--success-color); }
+    .btn:disabled,
+    .btn.disabled,
+    button:disabled {
+      background: #b8bec7 !important;
+      border-color: #b8bec7 !important;
+      color: #f4f6f8 !important;
+      opacity: 1 !important;
+      cursor: not-allowed !important;
+      box-shadow: none !important;
+    }
+    .status {
+      min-height: 1.2rem;
+      font-size: 0.92rem;
+      margin-top: 0.5rem;
+    }
+    .status.error { color: #dc3545; }
+    .status.success { color: #2f9e44; }
+    .status.info { color: var(--text-muted); }
+    #mainScreen { display: none; }
+  </style>
+</head>
+<body>
+  <div class="card-shell">
+    <div class="header-row">
+      <div>
+        <h1 class="header-title"><i class="fas fa-route"></i> Manual Dispatch Request</h1>
+        <div class="app-version">v1.0.0</div>
+      </div>
+
+      <div class="theme-dropdown" id="themeContainer">
+        <button id="themeBtn" class="theme-btn"><i class="fas fa-palette"></i></button>
+        <div id="themePopup" class="theme-popup">
+          <button class="theme-option active" data-theme="light">Light</button>
+          <button class="theme-option" data-theme="dark">Dark</button>
+          <button class="theme-option" data-theme="manhattan">Manhattan</button>
+          <button class="theme-option" data-theme="loves">Love's Travel Stops</button>
+          <button class="theme-option" data-theme="rockline">Rockline Industries</button>
+          <button class="theme-option" data-theme="hyvee">Hy-Vee</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="authSection">
+      <label class="form-label fw-semibold">ORG</label>
+      <div class="d-flex gap-2 align-items-center">
+        <input id="orgInput" class="form-control" style="max-width:260px;" placeholder="Enter ORG" />
+        <button id="authBtn" class="btn btn-success">Authenticate</button>
+      </div>
+      <div id="authStatus" class="status info"></div>
+    </div>
+
+    <div id="mainScreen">
+      <div class="mb-3">
+        <label class="form-label fw-semibold">Sample Input</label>
+        <input id="sampleInput" class="form-control" placeholder="Enter value" />
+      </div>
+      <button id="submitBtn" class="btn btn-primary"><i class="fas fa-paper-plane"></i> Submit</button>
+      <div id="submitStatus" class="status info"></div>
+    </div>
+  </div>
+
+  <script>
+    const APP_VERSION = '1.0.0';
+    let token = null;
+
+    const THEMES = {
+      light: {
+        '--bg-color': '#ffffff', '--text-color': '#1f2933', '--text-muted': '#616e7c',
+        '--card-bg': '#f8fafc', '--border-color': '#d9e2ec', '--input-bg': '#ffffff',
+        '--input-border': '#cbd5e0', '--input-focus-bg': '#ffffff', '--input-focus-border': '#339af0',
+        '--input-focus-shadow': 'rgba(51,154,240,0.25)', '--primary-color': '#339af0',
+        '--primary-hover': '#228be6', '--success-color': '#28a745', '--danger-color': '#dc3545',
+        '--header-bg': '#d9e2ec', '--header-text': '#1f2933'
+      },
+      dark: {
+        '--bg-color': '#1a1d23', '--text-color': '#e2e8f0', '--text-muted': '#a0aec0',
+        '--card-bg': '#2d3748', '--border-color': '#4a5568', '--input-bg': '#2d3748',
+        '--input-border': '#4a5568', '--input-focus-bg': '#2d3748', '--input-focus-border': '#63b3ed',
+        '--input-focus-shadow': 'rgba(99,179,237,0.25)', '--primary-color': '#63b3ed',
+        '--primary-hover': '#4299e1', '--success-color': '#48bb78', '--danger-color': '#fc8181',
+        '--header-bg': '#2d3748', '--header-text': '#e2e8f0'
+      },
+      manhattan: {
+        '--bg-color': '#2d2f3b', '--text-color': '#e0e0e0', '--text-muted': '#b0b0b0',
+        '--card-bg': '#484e5e', '--border-color': '#5a6172', '--input-bg': '#3a3f4e',
+        '--input-border': '#5a6172', '--input-focus-bg': '#3a3f4e', '--input-focus-border': '#339af0',
+        '--input-focus-shadow': 'rgba(51,154,240,0.25)', '--primary-color': '#339af0',
+        '--primary-hover': '#228be6', '--success-color': '#51cf66', '--danger-color': '#ff6b6b',
+        '--header-bg': '#3a3f4e', '--header-text': '#e0e0e0'
+      },
+      loves: {
+        '--bg-color': '#ffffff', '--text-color': '#212529', '--text-muted': '#6c757d',
+        '--card-bg': '#ffffff', '--border-color': '#dee2e6', '--input-bg': '#f5f5f5',
+        '--input-border': '#ced4da', '--input-focus-bg': '#ffffff', '--input-focus-border': '#E31837',
+        '--input-focus-shadow': 'rgba(227,24,55,0.25)', '--primary-color': '#E31837',
+        '--primary-hover': '#C0142D', '--success-color': '#28a745', '--danger-color': '#dc3545',
+        '--header-bg': '#E31837', '--header-text': '#ffffff'
+      },
+      rockline: {
+        '--bg-color': '#ffffff', '--text-color': '#2d2d2d', '--text-muted': '#6b7d66',
+        '--card-bg': '#ffffff', '--border-color': '#d4ddd0', '--input-bg': '#f0f2ee',
+        '--input-border': '#b8c9b3', '--input-focus-bg': '#ffffff', '--input-focus-border': '#6EB43F',
+        '--input-focus-shadow': 'rgba(110,180,63,0.25)', '--primary-color': '#6EB43F',
+        '--primary-hover': '#5a9a32', '--success-color': '#6EB43F', '--danger-color': '#c62828',
+        '--header-bg': '#2d2d2d', '--header-text': '#ffffff'
+      },
+      hyvee: {
+        '--bg-color': '#ffffff', '--text-color': '#1f1f1f', '--text-muted': '#6c757d',
+        '--card-bg': '#ffffff', '--border-color': '#e0d6d6', '--input-bg': '#faf7f7',
+        '--input-border': '#d4c9c9', '--input-focus-bg': '#ffffff', '--input-focus-border': '#E2231A',
+        '--input-focus-shadow': 'rgba(226,35,26,0.25)', '--primary-color': '#E2231A',
+        '--primary-hover': '#c41e16', '--success-color': '#28a745', '--danger-color': '#dc3545',
+        '--header-bg': '#E2231A', '--header-text': '#ffffff'
+      }
+    };
+
+    function setStatus(el, text, type = 'info') {
+      el.textContent = text || '';
+      el.className = `status ${type}`;
+    }
+
+    async function api(path, body) {
+      const r = await fetch(`/api/${path}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body || {})
+      });
+      return r.json();
+    }
+
+    function applyTheme(name) {
+      const vars = THEMES[name];
+      if (!vars) return;
+      for (const [k, v] of Object.entries(vars)) {
+        document.documentElement.style.setProperty(k, v);
+      }
+      localStorage.setItem('dispatch_request_theme', name);
+      document.querySelectorAll('.theme-option').forEach(o => {
+        o.classList.toggle('active', o.dataset.theme === name);
+      });
+    }
+
+    async function authenticate() {
+      const org = document.getElementById('orgInput').value.trim();
+      const authStatus = document.getElementById('authStatus');
+      if (!org) {
+        setStatus(authStatus, 'ORG is required.', 'error');
+        return;
+      }
+      setStatus(authStatus, 'Authenticating...', 'info');
+      const res = await api('auth', { org });
+      if (!res.success) {
+        setStatus(authStatus, res.error || 'Authentication failed.', 'error');
+        return;
+      }
+      token = res.token;
+      setStatus(authStatus, 'Authenticated.', 'success');
+      document.getElementById('authSection').style.display = 'none';
+      document.getElementById('mainScreen').style.display = '';
+    }
+
+    async function submitRequest() {
+      const submitBtn = document.getElementById('submitBtn');
+      const submitStatus = document.getElementById('submitStatus');
+      const org = document.getElementById('orgInput').value.trim();
+      const sampleInput = document.getElementById('sampleInput').value.trim();
+
+      submitBtn.disabled = true;
+      setStatus(submitStatus, 'Submitting request...', 'info');
+      try {
+        const res = await api('submit_request', { org, token, sampleInput });
+        if (!res.success) {
+          setStatus(submitStatus, res.error || 'Submit failed.', 'error');
+          return;
+        }
+        setStatus(submitStatus, res.message || 'Submitted.', 'success');
+      } catch (e) {
+        setStatus(submitStatus, 'Submit failed.', 'error');
+      } finally {
+        submitBtn.disabled = false;
+      }
+    }
+
+    document.getElementById('authBtn').addEventListener('click', authenticate);
+    document.getElementById('submitBtn').addEventListener('click', submitRequest);
+    document.getElementById('orgInput').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') authenticate();
+    });
+    document.getElementById('sampleInput').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && !document.getElementById('submitBtn').disabled) submitRequest();
+    });
+
+    const themeBtn = document.getElementById('themeBtn');
+    const themePopup = document.getElementById('themePopup');
+    themeBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      themePopup.classList.toggle('visible');
+    });
+    document.addEventListener('click', () => themePopup.classList.remove('visible'));
+    themePopup.addEventListener('click', (e) => e.stopPropagation());
+    document.querySelectorAll('.theme-option').forEach(opt => {
+      opt.addEventListener('click', () => {
+        applyTheme(opt.dataset.theme);
+        themePopup.classList.remove('visible');
+      });
+    });
+
+    // URL parameters: ORG/Organization auto-auth, Theme=N hides selector.
+    (async function init() {
+      try { await api('app_opened', {}); } catch (_) {}
+
+      const params = new URLSearchParams(window.location.search);
+      const startupOrg = (params.get('ORG') || params.get('Organization') || '').trim();
+      if (startupOrg) document.getElementById('orgInput').value = startupOrg;
+
+      const hideTheme = (params.get('Theme') || '').toUpperCase() === 'N';
+      if (hideTheme) {
+        document.getElementById('themeContainer').style.display = 'none';
+      }
+
+      const savedTheme = localStorage.getItem('dispatch_request_theme') || 'light';
+      applyTheme(THEMES[savedTheme] ? savedTheme : 'light');
+
+      if (startupOrg) {
+        await authenticate();
+      } else {
+        setStatus(document.getElementById('authStatus'), 'Enter ORG to authenticate.', 'info');
+      }
+    })();
+  </script>
+</body>
+</html>
