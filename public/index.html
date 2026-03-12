@@ -180,6 +180,23 @@
     let stops = [];
     let facilityOptionsHtml = '';
     let idSeq = 1;
+    const PRODUCT_CLASS_WEIGHT_DEFAULTS_RAW = {
+      '12BR': 1500, '12OM': 1500, 'ACCSSRY': 1100, 'ACID': 2150, 'APPAREL': 1000,
+      'AUTO': 1600, 'BATHBODY': 1150, 'CLOTHES': 1000, 'CLOTHING': 1000, 'COSMETIC': 1150,
+      'DRY': 1500, 'ELECTRNC': 1150, 'ELECTRONICS': 1150, 'FLOORLD': 1600, 'FMD': 1500,
+      'FROZEN': 1850, 'GLOVES': 1050, 'GROCERY': 1600, 'HAZMAT': 2000, 'HOMEGOODS': 1400,
+      'INB': 1500, 'KITCHEN': 1300, 'LIQUOR': 2100, 'LNH': 1500, 'MEDICAL': 1400,
+      'OUT': 1500, 'OUTDOOR': 1600, 'PALLET': null, 'PC': 1500, 'PC01': 1500, 'PC1': 1500,
+      'PE': 1500, 'PHARMA': 1400, 'PL01': 1500, 'PRODUCE': 1500, 'REEFER': 1750,
+      'REFRIGERATED': 1750, 'RUGS': 1600, 'SHOES': 1200, 'SURGICAL': 1400, 'TOYS': 1100,
+      'WINE': 2100, 'BATTERIES': 1850, 'MOTOR OIL': 2100, 'TIRES': 2000, 'SPARK PLUGS': 1300,
+      'CHEESE': 1700, 'PIZZA SAUCE': 1900, 'FLOUR': 1500, 'CUPS 16OZ': 1050, 'GENERATORS': 2000,
+      'ALUMINUMCOIL': 2500, 'BOXES': 1100, 'CHEMICAL': 2150, 'COOLER': 1750, 'FS': 1500,
+      'AMBIENT': 1500, 'FISH': 1750, 'MERCH': 1400, 'OF': 1500, 'MEDICAL SUPPLIES': 1400,
+      'IB-FRZ': 1850, 'IB-REF': 1750, 'IB-DRY': 1500, 'OB-FRZ': 1850, 'OB-PRO': 1500,
+      'OB-CHGRO': 1600, 'OB-HBC': 1200, 'PDIFRSH': 1500, 'OB-LDC': 1500, 'UNKNOWN': 1500,
+      'PERISHABLE': 1700
+    };
 
     const THEMES = {
       light: {'--bg-color':'#ffffff','--text-color':'#1f2933','--text-muted':'#616e7c','--card-bg':'#f8fafc','--border-color':'#d9e2ec','--input-bg':'#ffffff','--input-border':'#cbd5e0','--input-focus-bg':'#ffffff','--input-focus-border':'#339af0','--input-focus-shadow':'rgba(51,154,240,0.25)','--primary-color':'#339af0','--primary-hover':'#228be6','--success-color':'#28a745','--danger-color':'#dc3545','--header-text':'#1f2933'},
@@ -297,8 +314,24 @@
         .map(pc => `<option value="${pc.ProductClassId}" ${pc.ProductClassId === selectedId ? 'selected' : ''}>${pc.Display}</option>`)
         .join('');
     }
+    function normalizeProductClassKey(v) {
+      return (v || '').toString().trim().toUpperCase();
+    }
+    function defaultAvgWeightForProductClass(productClassId) {
+      const key = normalizeProductClassKey(productClassId);
+      if (!key) return 0;
+      const val = PRODUCT_CLASS_WEIGHT_DEFAULTS_RAW[key];
+      if (typeof val === 'number' && Number.isFinite(val)) return val;
+      return 0;
+    }
     function addStop() {
-      stops.push({ id: idSeq++, sequence: stops.length + 1, deliveryFacilityId: '', products: [{ productClass: firstProductClassId(), pallets: '' }] });
+      const pc = firstProductClassId();
+      stops.push({
+        id: idSeq++,
+        sequence: stops.length + 1,
+        deliveryFacilityId: '',
+        products: [{ productClass: pc, avgWeight: defaultAvgWeightForProductClass(pc), pallets: '' }]
+      });
       renderStops(); validateForm();
     }
     function removeStop(id) {
@@ -307,7 +340,12 @@
       stops.forEach((s, i) => { s.sequence = i + 1; });
       renderStops(); validateForm();
     }
-    function addProductLine(stopId) { const s = stops.find(x => x.id === stopId); if (!s) return; s.products.push({ productClass: firstProductClassId(), pallets: '' }); renderStops(); validateForm(); }
+    function addProductLine(stopId) {
+      const s = stops.find(x => x.id === stopId); if (!s) return;
+      const pc = firstProductClassId();
+      s.products.push({ productClass: pc, avgWeight: defaultAvgWeightForProductClass(pc), pallets: '' });
+      renderStops(); validateForm();
+    }
     function removeProductLine(stopId, idx) {
       const s = stops.find(x => x.id === stopId); if (!s || s.products.length <= 1) return;
       s.products.splice(idx, 1); renderStops(); validateForm();
@@ -333,7 +371,7 @@
           </div>
           <div class="table-responsive">
             <table class="table table-sm mini-grid mb-1">
-              <thead><tr><th style="width:45%;">Product Class</th><th style="width:35%;">Pallets</th><th style="width:20%;"></th></tr></thead>
+              <thead><tr><th style="width:38%;">Product Class</th><th style="width:27%;">Average Weight (lbs)</th><th style="width:25%;">Pallets</th><th style="width:10%;"></th></tr></thead>
               <tbody data-role="products-body"></tbody>
             </table>
           </div>
@@ -347,13 +385,23 @@
         const tbody = card.querySelector('[data-role="products-body"]');
         stop.products.forEach((p, idx) => {
           if (!p.productClass) p.productClass = firstProductClassId();
+          if (p.avgWeight === undefined || p.avgWeight === null || p.avgWeight === '') {
+            p.avgWeight = defaultAvgWeightForProductClass(p.productClass);
+          }
           const tr = document.createElement('tr');
           tr.innerHTML = `
             <td><select class="form-select form-select-sm" data-role="pclass">${productClassOptionsHtml(p.productClass)}</select></td>
+            <td><input type="number" min="0" step="0.01" class="form-control form-control-sm" data-role="avgWeight" value="${p.avgWeight}" /></td>
             <td><input type="number" min="0" step="0.01" class="form-control form-control-sm" data-role="pallets" value="${p.pallets}" /></td>
             <td><button class="btn btn-outline-danger btn-sm" data-role="remove-line"><i class="fas fa-times"></i></button></td>
           `;
-          tr.querySelector('[data-role="pclass"]').addEventListener('change', e => { p.productClass = e.target.value; validateForm(); });
+          tr.querySelector('[data-role="pclass"]').addEventListener('change', e => {
+            p.productClass = e.target.value;
+            p.avgWeight = defaultAvgWeightForProductClass(p.productClass);
+            renderStops();
+            validateForm();
+          });
+          tr.querySelector('[data-role="avgWeight"]').addEventListener('input', e => { p.avgWeight = e.target.value; validateForm(); });
           tr.querySelector('[data-role="pallets"]').addEventListener('input', e => { p.pallets = e.target.value; validateForm(); });
           tr.querySelector('[data-role="remove-line"]').addEventListener('click', () => removeProductLine(stop.id, idx));
           tbody.appendChild(tr);
@@ -381,6 +429,7 @@
         if (!s.products.length) { submitBtn.disabled = true; setStatus(submitStatus, `Stop ${s.sequence}: At least one Product Class line is required.`, 'error'); return false; }
         for (const p of s.products) {
           if (!p.productClass) { submitBtn.disabled = true; setStatus(submitStatus, `Stop ${s.sequence}: Product Class is required.`, 'error'); return false; }
+          if (p.avgWeight === '' || Number(p.avgWeight) <= 0) { submitBtn.disabled = true; setStatus(submitStatus, `Stop ${s.sequence}: Average Weight must be greater than 0.`, 'error'); return false; }
           if (p.pallets === '' || Number(p.pallets) < 0) { submitBtn.disabled = true; setStatus(submitStatus, `Stop ${s.sequence}: Pallets must be zero or greater.`, 'error'); return false; }
         }
       }
@@ -415,7 +464,11 @@
         stops: stops.map(s => ({
           sequence: Number(s.sequence),
           deliveryFacilityId: s.deliveryFacilityId || null,
-          productLines: s.products.map(p => ({ productClass: p.productClass, pallets: Number(p.pallets) }))
+          productLines: s.products.map(p => ({
+            productClass: p.productClass,
+            avgWeight: Number(p.avgWeight),
+            pallets: Number(p.pallets)
+          }))
         }))
       };
 
