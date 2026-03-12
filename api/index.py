@@ -641,6 +641,7 @@ def submit_request():
             "ShipmentId": shipment_id,
             "ModeId": "TL",
             "CarrierId": "PFLT",
+            "DesignatedCarrierId": "PFLT",
             "OrderCreationType": "TransportationOrder",
             "ExternalShipmentWithTO": True,
             "ExternallyPlanned": True,
