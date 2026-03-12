@@ -170,10 +170,10 @@
   <script>
     let token = null;
     let allFacilities = [];
+    let productClassOptions = [];
     let stops = [];
     let facilityOptionsHtml = '';
     let idSeq = 1;
-    const PRODUCT_CLASSES = ['Grocery', 'Chill', 'Frozen'];
 
     const THEMES = {
       light: {'--bg-color':'#ffffff','--text-color':'#1f2933','--text-muted':'#616e7c','--card-bg':'#f8fafc','--border-color':'#d9e2ec','--input-bg':'#ffffff','--input-border':'#cbd5e0','--input-focus-bg':'#ffffff','--input-focus-border':'#339af0','--input-focus-shadow':'rgba(51,154,240,0.25)','--primary-color':'#339af0','--primary-hover':'#228be6','--success-color':'#28a745','--danger-color':'#dc3545','--header-text':'#1f2933'},
@@ -248,8 +248,16 @@
       if (city) return `${fid}: ${city}`;
       return fid;
     }
+    function firstProductClassId() {
+      return productClassOptions.length ? productClassOptions[0].ProductClassId : '';
+    }
+    function productClassOptionsHtml(selectedId) {
+      return productClassOptions
+        .map(pc => `<option value="${pc.ProductClassId}" ${pc.ProductClassId === selectedId ? 'selected' : ''}>${pc.Display}</option>`)
+        .join('');
+    }
     function addStop() {
-      stops.push({ id: idSeq++, sequence: stops.length + 1, deliveryFacilityId: '', products: [{ productClass: PRODUCT_CLASSES[0], pallets: '' }] });
+      stops.push({ id: idSeq++, sequence: stops.length + 1, deliveryFacilityId: '', products: [{ productClass: firstProductClassId(), pallets: '' }] });
       renderStops(); validateForm();
     }
     function removeStop(id) {
@@ -258,7 +266,7 @@
       stops.forEach((s, i) => { s.sequence = i + 1; });
       renderStops(); validateForm();
     }
-    function addProductLine(stopId) { const s = stops.find(x => x.id === stopId); if (!s) return; s.products.push({ productClass: PRODUCT_CLASSES[0], pallets: '' }); renderStops(); validateForm(); }
+    function addProductLine(stopId) { const s = stops.find(x => x.id === stopId); if (!s) return; s.products.push({ productClass: firstProductClassId(), pallets: '' }); renderStops(); validateForm(); }
     function removeProductLine(stopId, idx) {
       const s = stops.find(x => x.id === stopId); if (!s || s.products.length <= 1) return;
       s.products.splice(idx, 1); renderStops(); validateForm();
@@ -297,10 +305,10 @@
 
         const tbody = card.querySelector('[data-role="products-body"]');
         stop.products.forEach((p, idx) => {
-          if (!p.productClass) p.productClass = PRODUCT_CLASSES[0];
+          if (!p.productClass) p.productClass = firstProductClassId();
           const tr = document.createElement('tr');
           tr.innerHTML = `
-            <td><select class="form-select form-select-sm" data-role="pclass">${PRODUCT_CLASSES.map(x => `<option ${x===p.productClass?'selected':''} value="${x}">${x}</option>`).join('')}</select></td>
+            <td><select class="form-select form-select-sm" data-role="pclass">${productClassOptionsHtml(p.productClass)}</select></td>
             <td><input type="number" min="0" step="0.01" class="form-control form-control-sm" data-role="pallets" value="${p.pallets}" /></td>
             <td><button class="btn btn-outline-danger btn-sm" data-role="remove-line"><i class="fas fa-times"></i></button></td>
           `;
@@ -385,10 +393,15 @@
     async function loadFormData() {
       const org = document.getElementById('orgInput').value.trim();
       const submitStatus = document.getElementById('submitStatus');
-      setStatus(submitStatus, 'Loading terminals and facilities...', 'info');
-      const res = await api('facilities', { org, token });
-      if (!res.success) { setStatus(submitStatus, res.error || 'Failed loading facilities.', 'error'); return false; }
-      allFacilities = (res.facilities || []).sort((a, b) => (a.FacilityId || '').localeCompare(b.FacilityId || ''));
+      setStatus(submitStatus, 'Loading terminals, facilities, and product classes...', 'info');
+      const [facRes, pcRes] = await Promise.all([
+        api('facilities', { org, token }),
+        api('product_classes', { org, token })
+      ]);
+      if (!facRes.success) { setStatus(submitStatus, facRes.error || 'Failed loading facilities.', 'error'); return false; }
+      if (!pcRes.success) { setStatus(submitStatus, pcRes.error || 'Failed loading product classes.', 'error'); return false; }
+      allFacilities = (facRes.facilities || []).sort((a, b) => (a.FacilityId || '').localeCompare(b.FacilityId || ''));
+      productClassOptions = (pcRes.productClasses || []).slice();
       facilityOptionsHtml = '<option value="">-- Select Facility --</option>' +
         allFacilities.map(f => `<option value="${f.FacilityId}">${facilityLabel(f)}</option>`).join('');
 
@@ -398,18 +411,18 @@
 
       const terminalSel = document.getElementById('terminalSelect');
       terminalSel.innerHTML = '<option value="">-- Select Terminal --</option>';
-      (res.terminals || []).forEach(t => {
+      (facRes.terminals || []).forEach(t => {
         const o = document.createElement('option');
         o.value = t.TerminalId;
         o.textContent = t.Display || t.TerminalId;
         terminalSel.appendChild(o);
       });
-      if (res.terminals?.length) terminalSel.value = res.terminals[0].TerminalId;
+      if (facRes.terminals?.length) terminalSel.value = facRes.terminals[0].TerminalId;
       setTerminalDefaults();
       stops = [];
       idSeq = 1;
       addStop();
-      setStatus(submitStatus, 'Terminals/facilities loaded.', 'success');
+      setStatus(submitStatus, 'Terminals/facilities/product classes loaded.', 'success');
       return true;
     }
     async function authenticate() {

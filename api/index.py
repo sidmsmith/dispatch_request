@@ -73,6 +73,14 @@ def manhattan_headers(org, token):
     }
 
 
+def normalize_capitalization(text):
+    raw = (text or "").strip()
+    if not raw:
+        return ""
+    # Normalize all-caps/all-lower/mixed input into a consistent display case.
+    return " ".join(part.capitalize() for part in raw.lower().split())
+
+
 @app.route("/api/app_opened", methods=["POST"])
 def app_opened():
     send_ha_message({"event": "dispatch_request_app_opened"})
@@ -173,6 +181,65 @@ def facilities():
         facilities_out.sort(key=lambda x: (x.get("FacilityId") or "").lower())
         terminals_out.sort(key=lambda x: (x.get("TerminalId") or "").lower())
         return jsonify({"success": True, "facilities": facilities_out, "terminals": terminals_out})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)})
+
+
+@app.route("/api/product_classes", methods=["POST"])
+def product_classes():
+    org = request.json.get("org", "").strip()
+    token = request.json.get("token", "").strip()
+    if not org or not token:
+        return jsonify({"success": False, "error": "Missing org/token"})
+
+    url = f"https://{API_HOST}/item-master/api/item-master/productClass/search"
+    payload = {
+        "Query": "",
+        "Size": 1000,
+        "Template": {
+            "ProductClassId": None,
+            "Description": None,
+            "Rank": None,
+            "Threshold": None,
+        },
+    }
+    try:
+        r = requests.post(
+            url,
+            json=payload,
+            headers=manhattan_headers(org, token),
+            timeout=45,
+            verify=False,
+        )
+        if not r.ok:
+            return jsonify({"success": False, "error": f"HTTP {r.status_code}: {r.text[:400]}"})
+
+        data = r.json().get("data", []) or []
+        if isinstance(data, dict):
+            rows = data.get("ProductClass", []) or data.get("productClass", [])
+            if not rows:
+                rows = [v for v in data.values() if isinstance(v, list)]
+                rows = rows[0] if rows else []
+        else:
+            rows = data if isinstance(data, list) else []
+
+        out = []
+        for row in rows:
+            pcid = (row.get("ProductClassId") or "").strip()
+            desc_raw = (row.get("Description") or "").strip()
+            display = normalize_capitalization(desc_raw) if desc_raw else pcid
+            if not pcid and not display:
+                continue
+            out.append(
+                {
+                    "ProductClassId": pcid or display,
+                    "Description": desc_raw,
+                    "Display": display,
+                }
+            )
+
+        out.sort(key=lambda x: (x.get("Display") or "").lower())
+        return jsonify({"success": True, "productClasses": out})
     except Exception as e:
         return jsonify({"success": False, "error": str(e)})
 
