@@ -582,12 +582,14 @@ def submit_request():
                 }
             )
 
-    def build_shipment_payload_draft(form_payload, created_stops):
+    def build_shipment_payload(form_payload, created_stops, shipment_id):
         origin_facility_id = (form_payload.get("originFacilityId") or "").strip()
         if not origin_facility_id:
             raise Exception("Origin facility is required to build shipment payload")
         if not created_stops:
             raise Exception("No created TOs available to build shipment payload")
+        if not shipment_id:
+            raise Exception("ShipmentId is required")
 
         pickup_start = form_payload.get("pickupStart")
         pickup_end = form_payload.get("pickupEnd")
@@ -634,8 +636,7 @@ def submit_request():
             stop_seq += 1
 
         return {
-            # Intentionally left blank until Shipment NextUp ID is confirmed.
-            "ShipmentId": None,
+            "ShipmentId": shipment_id,
             "ModeId": "TL",
             "CarrierId": "PFLT",
             "OrderCreationType": "TransportationOrder",
@@ -646,17 +647,121 @@ def submit_request():
             "Stop": shipment_stops,
         }
 
+    shipment_nextup_debug = {}
+    shipment_create_debug = {}
+    shipment_id = None
+    shipment_nextup_url = (
+        f"https://{API_HOST}/shipment/api/nextup/getNextupNumbersByCounterType"
+        "?counterTypeId=NEWSHIPMENT&count=1"
+    )
     try:
-        shipment_payload_draft = build_shipment_payload_draft(payload, created_stop_records)
+        snr = requests.get(
+            shipment_nextup_url,
+            headers=manhattan_headers(org, token),
+            timeout=30,
+            verify=False,
+        )
+        shipment_nextup_debug["responseStatus"] = snr.status_code
+        shipment_nextup_debug["responseText"] = snr.text
+        try:
+            shipment_nextup_debug["responseJson"] = snr.json() if snr.text else {}
+        except Exception:
+            shipment_nextup_debug["responseJson"] = None
+        if not snr.ok:
+            return jsonify(
+                {
+                    "success": False,
+                    "error": f"Shipment NextUp failed: HTTP {snr.status_code}",
+                    "toCreateDebug": to_create_debug,
+                    "shipmentNextupDebug": shipment_nextup_debug,
+                }
+            )
+
+        nextup_body = shipment_nextup_debug.get("responseJson")
+        if isinstance(nextup_body, list):
+            shipment_numbers = nextup_body
+        elif isinstance(nextup_body, dict):
+            shipment_numbers = nextup_body.get("data", []) or []
+        else:
+            shipment_numbers = []
+        shipment_numbers = [str(n).strip() for n in shipment_numbers if str(n).strip()]
+        shipment_id = shipment_numbers[0] if shipment_numbers else None
+        if not shipment_id:
+            return jsonify(
+                {
+                    "success": False,
+                    "error": "No Shipment NextUp counter is configured in this environment.",
+                    "toCreateDebug": to_create_debug,
+                    "shipmentNextupDebug": shipment_nextup_debug,
+                }
+            )
     except Exception as e:
-        return jsonify({"success": False, "error": str(e), "toCreateDebug": to_create_debug})
+        return jsonify(
+            {
+                "success": False,
+                "error": f"Shipment NextUp failed: {e}",
+                "toCreateDebug": to_create_debug,
+                "shipmentNextupDebug": shipment_nextup_debug,
+            }
+        )
+
+    try:
+        shipment_payload = build_shipment_payload(payload, created_stop_records, shipment_id)
+    except Exception as e:
+        return jsonify(
+            {
+                "success": False,
+                "error": str(e),
+                "toCreateDebug": to_create_debug,
+                "shipmentNextupDebug": shipment_nextup_debug,
+            }
+        )
+
+    shipment_create_url = (
+        f"https://{API_HOST}/shipment/api/shipment/shipment/importShipmentWithOrders"
+    )
+    shipment_create_debug["requestPayload"] = shipment_payload
+    try:
+        sr = requests.post(
+            shipment_create_url,
+            json=shipment_payload,
+            headers=manhattan_headers(org, token),
+            timeout=45,
+            verify=False,
+        )
+        shipment_create_debug["responseStatus"] = sr.status_code
+        shipment_create_debug["responseText"] = sr.text
+        try:
+            shipment_create_debug["responseJson"] = sr.json() if sr.text else {}
+        except Exception:
+            shipment_create_debug["responseJson"] = None
+        if not sr.ok:
+            return jsonify(
+                {
+                    "success": False,
+                    "error": f"Create Shipment failed: HTTP {sr.status_code}",
+                    "toCreateDebug": to_create_debug,
+                    "shipmentNextupDebug": shipment_nextup_debug,
+                    "shipmentCreateDebug": shipment_create_debug,
+                }
+            )
+    except Exception as e:
+        return jsonify(
+            {
+                "success": False,
+                "error": f"Create Shipment failed: {e}",
+                "toCreateDebug": to_create_debug,
+                "shipmentNextupDebug": shipment_nextup_debug,
+                "shipmentCreateDebug": shipment_create_debug,
+            }
+        )
 
     send_ha_message(
         {
             "event": "dispatch_request_submit",
             "org": org,
             "to_numbers": created_numbers,
-            "shipment_draft_ready": True,
+            "shipment_id": shipment_id,
             "payload_keys": list(payload.keys()) if isinstance(payload, dict) else [],
         }
     )
@@ -665,15 +770,17 @@ def submit_request():
             "success": True,
             "message": (
                 f"Transportation Orders created successfully: {', '.join(created_numbers)}. "
-                "Shipment payload draft prepared (shipment create call not enabled yet)."
+                f"Shipment created successfully: {shipment_id}"
             ),
             "toNumber": created_numbers[0] if created_numbers else None,
             "toNumbers": created_numbers,
             "createResult": create_results[0] if create_results else {},
             "createResults": create_results,
             "toCreateDebug": to_create_debug,
-            "shipmentCreateEnabled": False,
-            "shipmentPayloadDraft": shipment_payload_draft,
+            "shipmentCreateEnabled": True,
+            "shipmentId": shipment_id,
+            "shipmentNextupDebug": shipment_nextup_debug,
+            "shipmentCreateDebug": shipment_create_debug,
             "echo": payload,
         }
     )

@@ -676,15 +676,29 @@
             console.groupEnd();
           });
         }
-        if (res && res.shipmentPayloadDraft) {
-          console.groupCollapsed('[Dispatch Request] Shipment Payload Draft (not submitted)');
-          console.log('POST /shipment/api/shipment/shipment/importShipmentWithOrders payload:', res.shipmentPayloadDraft);
+        if (res && res.shipmentNextupDebug) {
+          console.groupCollapsed('[Dispatch Request] Shipment NextUp Debug');
+          console.log('GET /shipment/api/nextup/getNextupNumbersByCounterType?counterTypeId=NEWSHIPMENT&count=1 response:', {
+            status: res.shipmentNextupDebug.responseStatus,
+            responseJson: res.shipmentNextupDebug.responseJson,
+            responseText: res.shipmentNextupDebug.responseText
+          });
+          console.groupEnd();
+        }
+        if (res && res.shipmentCreateDebug) {
+          console.groupCollapsed('[Dispatch Request] Shipment Create Debug');
+          console.log('POST /shipment/api/shipment/shipment/importShipmentWithOrders payload:', res.shipmentCreateDebug.requestPayload);
+          console.log('Shipment create full response:', {
+            status: res.shipmentCreateDebug.responseStatus,
+            responseJson: res.shipmentCreateDebug.responseJson,
+            responseText: res.shipmentCreateDebug.responseText
+          });
           console.groupEnd();
         }
         if (!res.success) { setStatus(submitStatus, res.error || 'Submit failed.', 'error'); return; }
         const niceMsg = res.message
           || (Array.isArray(res.toNumbers) && res.toNumbers.length
-            ? `Transportation Orders created successfully: ${res.toNumbers.join(', ')}`
+            ? `Transportation Orders created successfully: ${res.toNumbers.join(', ')}${res.shipmentId ? `. Shipment created successfully: ${res.shipmentId}` : ''}`
             : (res.toNumber ? `Transportation Order created successfully: ${res.toNumber}` : 'Submitted.'));
         setStatus(submitStatus, niceMsg, 'success');
       } catch (e) {
