@@ -55,7 +55,15 @@
     .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0.8rem 1rem; }
     .readonly-field { background: color-mix(in srgb, var(--input-bg) 90%, #d1d5db 10%); }
     .field-wrap { position: relative; }
-    .stop-card { border: 1px dashed #f2b88c; border-radius: 10px; padding: 0.7rem; margin-bottom: 0.75rem; background: #fff1e6; }
+    .stop-card {
+      border: 1px dashed #f2b88c;
+      border-radius: 10px;
+      padding: 0.7rem;
+      margin-bottom: 0.75rem;
+      background: #fff1e6;
+      position: relative;
+      transition: box-shadow 0.12s ease, transform 0.12s ease, border-color 0.12s ease;
+    }
     .stop-card.alt { background: #eaf4ff; border-color: #8ec5ff; }
     .stop-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.5rem; }
     .stop-actions { display: flex; gap: 0.4rem; align-items: center; }
@@ -68,7 +76,26 @@
       cursor: grab;
     }
     .drag-handle-btn:active { cursor: grabbing; }
-    .stop-card.drag-over { outline: 2px solid var(--primary-color); }
+    .stop-card.drag-source {
+      opacity: 0.72;
+      transform: scale(0.99);
+    }
+    .stop-card.drag-over {
+      border-color: var(--primary-color);
+      box-shadow: 0 0 0 3px rgba(51,154,240,0.45), 0 10px 22px rgba(0,0,0,0.14);
+      transform: translateY(-1px);
+    }
+    .stop-card.drag-over::before {
+      content: "";
+      position: absolute;
+      left: -2px;
+      right: -2px;
+      top: -9px;
+      height: 6px;
+      border-radius: 999px;
+      background: var(--primary-color);
+      box-shadow: 0 0 0 2px rgba(255,255,255,0.9), 0 0 10px rgba(51,154,240,0.55);
+    }
     .mini-grid th, .mini-grid td { font-size: 0.88rem; vertical-align: middle; }
     .muted-note { font-size: 0.82rem; color: var(--text-muted); margin-top: 0.25rem; }
     #mainScreen { display: none; }
@@ -511,10 +538,11 @@
         const dragHandle = card.querySelector('[data-role="drag-handle"]');
         dragHandle.addEventListener('dragstart', () => {
           draggingStopId = stop.id;
+          card.classList.add('drag-source');
         });
         dragHandle.addEventListener('dragend', () => {
           draggingStopId = null;
-          document.querySelectorAll('.stop-card').forEach(c => c.classList.remove('drag-over'));
+          document.querySelectorAll('.stop-card').forEach(c => c.classList.remove('drag-over', 'drag-source'));
         });
         card.addEventListener('dragover', (e) => {
           e.preventDefault();
