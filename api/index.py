@@ -16,6 +16,7 @@ HA_WEBHOOK_URL = os.getenv("HA_WEBHOOK_URL", "http://sidmsmith.zapto.org:8123/ap
 HA_HEADERS = {"Content-Type": "application/json"}
 
 AUTH_HOST = os.getenv("MANHATTAN_AUTH_HOST", "salep-auth.sce.manh.com")
+API_HOST = os.getenv("MANHATTAN_API_HOST", "salep.sce.manh.com")
 USERNAME_BASE = os.getenv("MANHATTAN_USERNAME_BASE", "sdtadmin@")
 PASSWORD = os.getenv("MANHATTAN_PASSWORD")
 CLIENT_ID = os.getenv("MANHATTAN_CLIENT_ID", "omnicomponent.1.0.0")
@@ -63,6 +64,15 @@ def get_manhattan_token(org):
         return None
 
 
+def manhattan_headers(org, token):
+    return {
+        "Authorization": f"Bearer {token}",
+        "Content-Type": "application/json",
+        "selectedOrganization": org,
+        "selectedLocation": f"{org}-DM1",
+    }
+
+
 @app.route("/api/app_opened", methods=["POST"])
 def app_opened():
     send_ha_message({"event": "dispatch_request_app_opened"})
@@ -84,11 +94,85 @@ def auth():
     return jsonify({"success": False, "error": "Auth failed"})
 
 
+@app.route("/api/facilities", methods=["POST"])
+def facilities():
+    org = request.json.get("org", "").strip()
+    token = request.json.get("token", "").strip()
+    if not org or not token:
+        return jsonify({"success": False, "error": "Missing org/token"})
+
+    url = f"https://{API_HOST}/facility/api/facility/facility/search"
+    payload = {
+        "Query": "FacilityId is not null",
+        "Template": {
+            "FacilityId": None,
+            "Description": None,
+            "FacilityTypeTerminal": None,
+            "FacilityAddress": {"City": None, "State": None},
+        },
+        "Size": 3000,
+    }
+    try:
+        r = requests.post(
+            url,
+            json=payload,
+            headers=manhattan_headers(org, token),
+            timeout=45,
+            verify=False,
+        )
+        rows = []
+        if r.ok:
+            rows = r.json().get("data", []) or []
+        # Fallback for tenants where the null-check query syntax is unsupported.
+        if not rows:
+            fallback_payload = {
+                "Template": payload["Template"],
+                "Size": payload["Size"],
+            }
+            rf = requests.post(
+                url,
+                json=fallback_payload,
+                headers=manhattan_headers(org, token),
+                timeout=45,
+                verify=False,
+            )
+            if not rf.ok:
+                return jsonify({"success": False, "error": f"HTTP {rf.status_code}: {rf.text[:400]}"})
+            rows = rf.json().get("data", []) or []
+        facilities_out = []
+        terminals_out = []
+        for f in rows:
+            fid = (f.get("FacilityId") or "").strip()
+            if not fid:
+                continue
+            desc = (f.get("Description") or "").strip()
+            addr = f.get("FacilityAddress") or {}
+            city = (addr.get("City") or "").strip()
+            state = (addr.get("State") or "").strip()
+            row = {
+                "FacilityId": fid,
+                "Description": desc,
+                "City": city,
+                "State": state,
+                "Display": f"{fid} - {desc}" if desc else fid,
+                "FacilityTypeTerminal": bool(f.get("FacilityTypeTerminal")),
+            }
+            facilities_out.append(row)
+            if row["FacilityTypeTerminal"]:
+                terminals_out.append({"TerminalId": fid, "Description": desc, "Display": row["Display"]})
+
+        facilities_out.sort(key=lambda x: (x.get("FacilityId") or "").lower())
+        terminals_out.sort(key=lambda x: (x.get("TerminalId") or "").lower())
+        return jsonify({"success": True, "facilities": facilities_out, "terminals": terminals_out})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)})
+
+
 @app.route("/api/submit_request", methods=["POST"])
 def submit_request():
     org = request.json.get("org", "").strip()
     token = request.json.get("token", "").strip()
-    sample_input = request.json.get("sampleInput", "").strip()
+    payload = request.json.get("payload") or {}
 
     if not org or not token:
         return jsonify({"success": False, "error": "Missing org/token"})
@@ -98,14 +182,14 @@ def submit_request():
         {
             "event": "dispatch_request_submit",
             "org": org,
-            "sample_input_length": len(sample_input),
+            "payload_keys": list(payload.keys()) if isinstance(payload, dict) else [],
         }
     )
     return jsonify(
         {
             "success": True,
             "message": "Request captured. API chain not implemented yet.",
-            "echo": {"sampleInput": sample_input},
+            "echo": payload,
         }
     )
 

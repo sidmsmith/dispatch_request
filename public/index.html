@@ -8,128 +8,49 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <style>
     :root {
-      --bg-color: #ffffff;
-      --text-color: #1f2933;
-      --text-muted: #616e7c;
-      --card-bg: #f8fafc;
-      --border-color: #d9e2ec;
-      --input-bg: #ffffff;
-      --input-border: #cbd5e0;
-      --input-focus-bg: #ffffff;
-      --input-focus-border: #339af0;
-      --input-focus-shadow: rgba(51,154,240,0.25);
-      --primary-color: #339af0;
-      --primary-hover: #228be6;
-      --success-color: #28a745;
-      --danger-color: #dc3545;
-      --header-bg: #d9e2ec;
+      --bg-color: #ffffff; --text-color: #1f2933; --text-muted: #616e7c;
+      --card-bg: #f8fafc; --border-color: #d9e2ec; --input-bg: #ffffff;
+      --input-border: #cbd5e0; --input-focus-bg: #ffffff; --input-focus-border: #339af0;
+      --input-focus-shadow: rgba(51,154,240,0.25); --primary-color: #339af0;
+      --primary-hover: #228be6; --success-color: #28a745; --danger-color: #dc3545;
       --header-text: #1f2933;
     }
-    html, body {
-      height: 100%;
-      margin: 0;
-      background: var(--bg-color);
-      color: var(--text-color);
-    }
-    body {
-      padding: 1rem;
-      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
-    }
-    .card-shell {
-      max-width: 980px;
-      margin: 0 auto;
-      background: var(--card-bg);
-      border: 1px solid var(--border-color);
-      border-radius: 12px;
-      padding: 1rem 1.25rem 1.25rem;
-    }
-    .header-row {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      margin-bottom: 1rem;
-    }
-    .header-title {
-      margin: 0;
-      font-size: 1.55rem;
-      font-weight: 700;
-      color: var(--header-text);
-    }
-    .app-version {
-      font-size: 0.78rem;
-      color: var(--text-muted);
-      font-weight: 600;
-    }
-    .theme-dropdown {
-      position: relative;
-    }
-    .theme-btn {
-      border: 1px solid var(--input-border);
-      background: var(--input-bg);
-      color: var(--text-color);
-      border-radius: 8px;
-      padding: 0.35rem 0.6rem;
-    }
-    .theme-popup {
-      position: absolute;
-      right: 0;
-      top: 110%;
-      width: 200px;
-      background: var(--card-bg);
-      border: 1px solid var(--border-color);
-      border-radius: 10px;
-      padding: 0.45rem;
-      display: none;
-      z-index: 20;
-      box-shadow: 0 6px 20px rgba(0,0,0,0.08);
-    }
+    html, body { height: 100%; margin: 0; background: var(--bg-color); color: var(--text-color); }
+    body { padding: 1rem; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; }
+    .card-shell { max-width: 1150px; margin: 0 auto; background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 12px; padding: 1rem 1.25rem 1.25rem; }
+    .header-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem; }
+    .header-title { margin: 0; font-size: 1.55rem; font-weight: 700; color: var(--header-text); }
+    .app-version { font-size: 0.78rem; color: var(--text-muted); font-weight: 600; }
+    .theme-dropdown { position: relative; }
+    .theme-btn { border: 1px solid var(--input-border); background: var(--input-bg); color: var(--text-color); border-radius: 8px; padding: 0.35rem 0.6rem; }
+    .theme-popup { position: absolute; right: 0; top: 110%; width: 200px; background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 10px; padding: 0.45rem; display: none; z-index: 30; box-shadow: 0 6px 20px rgba(0,0,0,0.08); }
     .theme-popup.visible { display: block; }
-    .theme-option {
-      width: 100%;
-      text-align: left;
-      border: none;
-      background: transparent;
-      color: var(--text-color);
-      padding: 0.4rem 0.5rem;
-      border-radius: 6px;
-      font-size: 0.9rem;
-    }
-    .theme-option:hover, .theme-option.active {
-      background: rgba(51,154,240,0.12);
-    }
-    .form-control, .form-select {
-      background: var(--input-bg);
-      border: 1px solid var(--input-border);
-      color: var(--text-color);
-    }
-    .form-control:focus, .form-select:focus {
-      background: var(--input-focus-bg);
-      border-color: var(--input-focus-border);
-      box-shadow: 0 0 0 0.2rem var(--input-focus-shadow);
-      color: var(--text-color);
-    }
+    .theme-option { width: 100%; text-align: left; border: none; background: transparent; color: var(--text-color); padding: 0.4rem 0.5rem; border-radius: 6px; font-size: 0.9rem; }
+    .theme-option:hover, .theme-option.active { background: rgba(51,154,240,0.12); }
+    .form-control, .form-select { background: var(--input-bg); border: 1px solid var(--input-border); color: var(--text-color); }
+    .form-control:focus, .form-select:focus { background: var(--input-focus-bg); border-color: var(--input-focus-border); box-shadow: 0 0 0 0.2rem var(--input-focus-shadow); color: var(--text-color); }
     .btn-primary { background: var(--primary-color); border-color: var(--primary-color); }
     .btn-primary:hover { background: var(--primary-hover); border-color: var(--primary-hover); }
     .btn-success { background: var(--success-color); border-color: var(--success-color); }
-    .btn:disabled,
-    .btn.disabled,
-    button:disabled {
-      background: #b8bec7 !important;
-      border-color: #b8bec7 !important;
-      color: #f4f6f8 !important;
-      opacity: 1 !important;
-      cursor: not-allowed !important;
-      box-shadow: none !important;
-    }
-    .status {
-      min-height: 1.2rem;
-      font-size: 0.92rem;
-      margin-top: 0.5rem;
-    }
-    .status.error { color: #dc3545; }
-    .status.success { color: #2f9e44; }
-    .status.info { color: var(--text-muted); }
+    .btn:disabled, .btn.disabled, button:disabled { background: #b8bec7 !important; border-color: #b8bec7 !important; color: #f4f6f8 !important; opacity: 1 !important; cursor: not-allowed !important; box-shadow: none !important; }
+    .status { min-height: 1.2rem; font-size: 0.92rem; margin-top: 0.5rem; }
+    .status.error { color: #dc3545; } .status.success { color: #2f9e44; } .status.info { color: var(--text-muted); }
+    .section { border: 1px solid var(--border-color); border-radius: 10px; padding: 0.9rem 1rem; margin-bottom: 0.95rem; background: var(--input-bg); }
+    .section h6 { margin: 0 0 0.75rem; font-weight: 700; }
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0.8rem 1rem; }
+    .readonly-field { background: color-mix(in srgb, var(--input-bg) 90%, #d1d5db 10%); }
+    .field-wrap { position: relative; }
+    .suggestions { position: absolute; z-index: 25; left: 0; right: 0; top: calc(100% + 4px); background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 8px; max-height: 220px; overflow: auto; box-shadow: 0 6px 18px rgba(0,0,0,0.08); display: none; }
+    .suggestions.visible { display: block; }
+    .s-item { padding: 0.45rem 0.55rem; font-size: 0.9rem; cursor: pointer; border-bottom: 1px solid var(--border-color); }
+    .s-item:last-child { border-bottom: none; }
+    .s-item:hover { background: rgba(51,154,240,0.12); }
+    .stop-card { border: 1px dashed var(--border-color); border-radius: 10px; padding: 0.7rem; margin-bottom: 0.75rem; }
+    .stop-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.5rem; }
+    .mini-grid th, .mini-grid td { font-size: 0.88rem; vertical-align: middle; }
+    .muted-note { font-size: 0.82rem; color: var(--text-muted); margin-top: 0.25rem; }
     #mainScreen { display: none; }
+    @media (max-width: 900px) { .grid-2 { grid-template-columns: 1fr; } }
   </style>
 </head>
 <body>
@@ -139,7 +60,6 @@
         <h1 class="header-title"><i class="fas fa-route"></i> Manual Dispatch Request</h1>
         <div class="app-version">v1.0.0</div>
       </div>
-
       <div class="theme-dropdown" id="themeContainer">
         <button id="themeBtn" class="theme-btn"><i class="fas fa-palette"></i></button>
         <div id="themePopup" class="theme-popup">
@@ -163,182 +83,385 @@
     </div>
 
     <div id="mainScreen">
-      <div class="mb-3">
-        <label class="form-label fw-semibold">Sample Input</label>
-        <input id="sampleInput" class="form-control" placeholder="Enter value" />
+      <div class="section">
+        <h6>Movement</h6>
+        <div class="grid-2">
+          <div>
+            <label class="form-label fw-semibold">Order Type / Reason Code</label>
+            <input class="form-control readonly-field" value="Manual Dispatch Request" readonly />
+          </div>
+          <div>
+            <label class="form-label fw-semibold">Terminal <span class="text-danger">*</span></label>
+            <select id="terminalSelect" class="form-select"></select>
+          </div>
+          <div>
+            <label class="form-label fw-semibold">Driver Type (default)</label>
+            <input id="driverType" class="form-control readonly-field" readonly />
+          </div>
+          <div>
+            <label class="form-label fw-semibold">Tractor Type (default)</label>
+            <input id="tractorType" class="form-control readonly-field" readonly />
+          </div>
+          <div>
+            <label class="form-label fw-semibold">Trailer Type (default)</label>
+            <input id="trailerType" class="form-control readonly-field" readonly />
+          </div>
+        </div>
       </div>
-      <button id="submitBtn" class="btn btn-primary"><i class="fas fa-paper-plane"></i> Submit</button>
+
+      <div class="section">
+        <h6>Origin</h6>
+        <div class="field-wrap">
+          <label class="form-label fw-semibold">Origin Facility <span class="text-danger">*</span></label>
+          <input id="originInput" class="form-control" placeholder="Search and select a facility" autocomplete="off" />
+          <div id="originSuggest" class="suggestions"></div>
+          <div class="muted-note">Must be selected from Facility Master.</div>
+        </div>
+      </div>
+
+      <div class="section">
+        <h6>Delivery Stops</h6>
+        <div id="stopsContainer"></div>
+        <button id="addStopBtn" class="btn btn-outline-primary btn-sm"><i class="fas fa-plus"></i> Add Stop</button>
+      </div>
+
+      <div class="section">
+        <h6>Dates & Times</h6>
+        <div class="grid-2">
+          <div>
+            <label class="form-label fw-semibold">Pickup Start <span class="text-danger">*</span></label>
+            <input id="pickupStart" type="datetime-local" class="form-control" />
+          </div>
+          <div>
+            <label class="form-label fw-semibold">Pickup End <span class="text-danger">*</span></label>
+            <input id="pickupEnd" type="datetime-local" class="form-control" />
+          </div>
+          <div>
+            <label class="form-label fw-semibold">Delivery Start <span class="text-danger">*</span></label>
+            <input id="deliveryStart" type="datetime-local" class="form-control" />
+          </div>
+          <div>
+            <label class="form-label fw-semibold">Delivery End <span class="text-danger">*</span></label>
+            <input id="deliveryEnd" type="datetime-local" class="form-control" />
+          </div>
+        </div>
+      </div>
+
+      <div class="d-flex gap-2">
+        <button id="submitBtn" class="btn btn-primary"><i class="fas fa-paper-plane"></i> Submit</button>
+      </div>
       <div id="submitStatus" class="status info"></div>
     </div>
   </div>
 
   <script>
-    const APP_VERSION = '1.0.0';
     let token = null;
+    let allFacilities = [];
+    let stops = [];
+    let originSelection = null;
+    let idSeq = 1;
+    const PRODUCT_CLASSES = ['Grocery', 'Chill', 'Frozen'];
 
     const THEMES = {
-      light: {
-        '--bg-color': '#ffffff', '--text-color': '#1f2933', '--text-muted': '#616e7c',
-        '--card-bg': '#f8fafc', '--border-color': '#d9e2ec', '--input-bg': '#ffffff',
-        '--input-border': '#cbd5e0', '--input-focus-bg': '#ffffff', '--input-focus-border': '#339af0',
-        '--input-focus-shadow': 'rgba(51,154,240,0.25)', '--primary-color': '#339af0',
-        '--primary-hover': '#228be6', '--success-color': '#28a745', '--danger-color': '#dc3545',
-        '--header-bg': '#d9e2ec', '--header-text': '#1f2933'
-      },
-      dark: {
-        '--bg-color': '#1a1d23', '--text-color': '#e2e8f0', '--text-muted': '#a0aec0',
-        '--card-bg': '#2d3748', '--border-color': '#4a5568', '--input-bg': '#2d3748',
-        '--input-border': '#4a5568', '--input-focus-bg': '#2d3748', '--input-focus-border': '#63b3ed',
-        '--input-focus-shadow': 'rgba(99,179,237,0.25)', '--primary-color': '#63b3ed',
-        '--primary-hover': '#4299e1', '--success-color': '#48bb78', '--danger-color': '#fc8181',
-        '--header-bg': '#2d3748', '--header-text': '#e2e8f0'
-      },
-      manhattan: {
-        '--bg-color': '#2d2f3b', '--text-color': '#e0e0e0', '--text-muted': '#b0b0b0',
-        '--card-bg': '#484e5e', '--border-color': '#5a6172', '--input-bg': '#3a3f4e',
-        '--input-border': '#5a6172', '--input-focus-bg': '#3a3f4e', '--input-focus-border': '#339af0',
-        '--input-focus-shadow': 'rgba(51,154,240,0.25)', '--primary-color': '#339af0',
-        '--primary-hover': '#228be6', '--success-color': '#51cf66', '--danger-color': '#ff6b6b',
-        '--header-bg': '#3a3f4e', '--header-text': '#e0e0e0'
-      },
-      loves: {
-        '--bg-color': '#ffffff', '--text-color': '#212529', '--text-muted': '#6c757d',
-        '--card-bg': '#ffffff', '--border-color': '#dee2e6', '--input-bg': '#f5f5f5',
-        '--input-border': '#ced4da', '--input-focus-bg': '#ffffff', '--input-focus-border': '#E31837',
-        '--input-focus-shadow': 'rgba(227,24,55,0.25)', '--primary-color': '#E31837',
-        '--primary-hover': '#C0142D', '--success-color': '#28a745', '--danger-color': '#dc3545',
-        '--header-bg': '#E31837', '--header-text': '#ffffff'
-      },
-      rockline: {
-        '--bg-color': '#ffffff', '--text-color': '#2d2d2d', '--text-muted': '#6b7d66',
-        '--card-bg': '#ffffff', '--border-color': '#d4ddd0', '--input-bg': '#f0f2ee',
-        '--input-border': '#b8c9b3', '--input-focus-bg': '#ffffff', '--input-focus-border': '#6EB43F',
-        '--input-focus-shadow': 'rgba(110,180,63,0.25)', '--primary-color': '#6EB43F',
-        '--primary-hover': '#5a9a32', '--success-color': '#6EB43F', '--danger-color': '#c62828',
-        '--header-bg': '#2d2d2d', '--header-text': '#ffffff'
-      },
-      hyvee: {
-        '--bg-color': '#ffffff', '--text-color': '#1f1f1f', '--text-muted': '#6c757d',
-        '--card-bg': '#ffffff', '--border-color': '#e0d6d6', '--input-bg': '#faf7f7',
-        '--input-border': '#d4c9c9', '--input-focus-bg': '#ffffff', '--input-focus-border': '#E2231A',
-        '--input-focus-shadow': 'rgba(226,35,26,0.25)', '--primary-color': '#E2231A',
-        '--primary-hover': '#c41e16', '--success-color': '#28a745', '--danger-color': '#dc3545',
-        '--header-bg': '#E2231A', '--header-text': '#ffffff'
-      }
+      light: {'--bg-color':'#ffffff','--text-color':'#1f2933','--text-muted':'#616e7c','--card-bg':'#f8fafc','--border-color':'#d9e2ec','--input-bg':'#ffffff','--input-border':'#cbd5e0','--input-focus-bg':'#ffffff','--input-focus-border':'#339af0','--input-focus-shadow':'rgba(51,154,240,0.25)','--primary-color':'#339af0','--primary-hover':'#228be6','--success-color':'#28a745','--danger-color':'#dc3545','--header-text':'#1f2933'},
+      dark: {'--bg-color':'#1a1d23','--text-color':'#e2e8f0','--text-muted':'#a0aec0','--card-bg':'#2d3748','--border-color':'#4a5568','--input-bg':'#2d3748','--input-border':'#4a5568','--input-focus-bg':'#2d3748','--input-focus-border':'#63b3ed','--input-focus-shadow':'rgba(99,179,237,0.25)','--primary-color':'#63b3ed','--primary-hover':'#4299e1','--success-color':'#48bb78','--danger-color':'#fc8181','--header-text':'#e2e8f0'},
+      manhattan: {'--bg-color':'#2d2f3b','--text-color':'#e0e0e0','--text-muted':'#b0b0b0','--card-bg':'#484e5e','--border-color':'#5a6172','--input-bg':'#3a3f4e','--input-border':'#5a6172','--input-focus-bg':'#3a3f4e','--input-focus-border':'#339af0','--input-focus-shadow':'rgba(51,154,240,0.25)','--primary-color':'#339af0','--primary-hover':'#228be6','--success-color':'#51cf66','--danger-color':'#ff6b6b','--header-text':'#e0e0e0'},
+      loves: {'--bg-color':'#ffffff','--text-color':'#212529','--text-muted':'#6c757d','--card-bg':'#ffffff','--border-color':'#dee2e6','--input-bg':'#f5f5f5','--input-border':'#ced4da','--input-focus-bg':'#ffffff','--input-focus-border':'#E31837','--input-focus-shadow':'rgba(227,24,55,0.25)','--primary-color':'#E31837','--primary-hover':'#C0142D','--success-color':'#28a745','--danger-color':'#dc3545','--header-text':'#212529'},
+      rockline: {'--bg-color':'#ffffff','--text-color':'#2d2d2d','--text-muted':'#6b7d66','--card-bg':'#ffffff','--border-color':'#d4ddd0','--input-bg':'#f0f2ee','--input-border':'#b8c9b3','--input-focus-bg':'#ffffff','--input-focus-border':'#6EB43F','--input-focus-shadow':'rgba(110,180,63,0.25)','--primary-color':'#6EB43F','--primary-hover':'#5a9a32','--success-color':'#6EB43F','--danger-color':'#c62828','--header-text':'#2d2d2d'},
+      hyvee: {'--bg-color':'#ffffff','--text-color':'#1f1f1f','--text-muted':'#6c757d','--card-bg':'#ffffff','--border-color':'#e0d6d6','--input-bg':'#faf7f7','--input-border':'#d4c9c9','--input-focus-bg':'#ffffff','--input-focus-border':'#E2231A','--input-focus-shadow':'rgba(226,35,26,0.25)','--primary-color':'#E2231A','--primary-hover':'#c41e16','--success-color':'#28a745','--danger-color':'#dc3545','--header-text':'#1f1f1f'}
     };
 
-    function setStatus(el, text, type = 'info') {
-      el.textContent = text || '';
-      el.className = `status ${type}`;
-    }
-
+    function setStatus(el, text, type = 'info') { el.textContent = text || ''; el.className = `status ${type}`; }
     async function api(path, body) {
-      const r = await fetch(`/api/${path}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body || {})
-      });
+      const r = await fetch(`/api/${path}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body || {}) });
       return r.json();
     }
-
     function applyTheme(name) {
-      const vars = THEMES[name];
-      if (!vars) return;
-      for (const [k, v] of Object.entries(vars)) {
-        document.documentElement.style.setProperty(k, v);
-      }
+      const vars = THEMES[name]; if (!vars) return;
+      for (const [k, v] of Object.entries(vars)) document.documentElement.style.setProperty(k, v);
       localStorage.setItem('dispatch_request_theme', name);
-      document.querySelectorAll('.theme-option').forEach(o => {
-        o.classList.toggle('active', o.dataset.theme === name);
+      document.querySelectorAll('.theme-option').forEach(o => o.classList.toggle('active', o.dataset.theme === name));
+    }
+    function formatDtLocal(d) {
+      const yyyy = d.getFullYear(), mm = String(d.getMonth()+1).padStart(2,'0'), dd = String(d.getDate()).padStart(2,'0');
+      const hh = String(d.getHours()).padStart(2,'0'), mi = String(d.getMinutes()).padStart(2,'0');
+      return `${yyyy}-${mm}-${dd}T${hh}:${mi}`;
+    }
+    function roundUp30(d) {
+      const x = new Date(d); x.setSeconds(0); x.setMilliseconds(0);
+      const m = x.getMinutes(); const add = m % 30 === 0 ? 0 : 30 - (m % 30);
+      x.setMinutes(m + add); return x;
+    }
+    function applyDateDefaults() {
+      const pickupStart = roundUp30(new Date());
+      const pickupEnd = new Date(pickupStart.getTime() + (2 * 60 * 60 * 1000));
+      const deliveryStart = new Date(pickupEnd.getTime() + (4 * 60 * 60 * 1000));
+      const deliveryEnd = new Date(deliveryStart.getTime() + (2 * 60 * 60 * 1000));
+      document.getElementById('pickupStart').value = formatDtLocal(pickupStart);
+      document.getElementById('pickupEnd').value = formatDtLocal(pickupEnd);
+      document.getElementById('deliveryStart').value = formatDtLocal(deliveryStart);
+      document.getElementById('deliveryEnd').value = formatDtLocal(deliveryEnd);
+    }
+    function defaultsForTerminal(terminalId) {
+      if ((terminalId || '').includes('DM1')) return { driverType: 'Company Driver', tractorType: 'Day Cab', trailerType: '53FT Dry Van' };
+      return { driverType: 'Company Driver', tractorType: 'Standard Tractor', trailerType: 'Standard Trailer' };
+    }
+    function setTerminalDefaults() {
+      const terminalId = document.getElementById('terminalSelect').value;
+      const d = defaultsForTerminal(terminalId);
+      document.getElementById('driverType').value = d.driverType;
+      document.getElementById('tractorType').value = d.tractorType;
+      document.getElementById('trailerType').value = d.trailerType;
+    }
+    function facilityMatches(query) {
+      const q = (query || '').trim().toLowerCase();
+      if (!q) return allFacilities.slice(0, 12);
+      return allFacilities.filter(f =>
+        (f.FacilityId || '').toLowerCase().includes(q) ||
+        (f.Description || '').toLowerCase().includes(q) ||
+        (f.City || '').toLowerCase().includes(q)
+      ).slice(0, 12);
+    }
+    function showSuggestions(listEl, rows, onPick) {
+      listEl.innerHTML = '';
+      rows.forEach(r => {
+        const d = document.createElement('div');
+        d.className = 's-item';
+        d.textContent = `${r.FacilityId}${r.Description ? ' - ' + r.Description : ''}`;
+        d.addEventListener('mousedown', (e) => { e.preventDefault(); onPick(r); });
+        listEl.appendChild(d);
+      });
+      listEl.classList.toggle('visible', rows.length > 0);
+    }
+    function bindOriginPicker() {
+      const input = document.getElementById('originInput');
+      const list = document.getElementById('originSuggest');
+      input.addEventListener('input', () => {
+        originSelection = null;
+        showSuggestions(list, facilityMatches(input.value), pick => {
+          originSelection = pick;
+          input.value = `${pick.FacilityId}${pick.Description ? ' - ' + pick.Description : ''}`;
+          list.classList.remove('visible');
+          validateForm();
+        });
+        validateForm();
+      });
+      input.addEventListener('focus', () => showSuggestions(list, facilityMatches(input.value), pick => {
+        originSelection = pick; input.value = `${pick.FacilityId}${pick.Description ? ' - ' + pick.Description : ''}`; list.classList.remove('visible'); validateForm();
+      }));
+      input.addEventListener('blur', () => setTimeout(() => list.classList.remove('visible'), 120));
+    }
+    function addStop() {
+      stops.push({ id: idSeq++, sequence: stops.length + 1, facilitySelection: null, facilityText: '', products: [{ productClass: PRODUCT_CLASSES[0], pallets: '' }] });
+      renderStops(); validateForm();
+    }
+    function removeStop(id) {
+      if (stops.length <= 1) return;
+      stops = stops.filter(s => s.id !== id);
+      stops.forEach((s, i) => { s.sequence = i + 1; });
+      renderStops(); validateForm();
+    }
+    function addProductLine(stopId) { const s = stops.find(x => x.id === stopId); if (!s) return; s.products.push({ productClass: PRODUCT_CLASSES[0], pallets: '' }); renderStops(); validateForm(); }
+    function removeProductLine(stopId, idx) {
+      const s = stops.find(x => x.id === stopId); if (!s || s.products.length <= 1) return;
+      s.products.splice(idx, 1); renderStops(); validateForm();
+    }
+    function renderStops() {
+      const wrap = document.getElementById('stopsContainer');
+      wrap.innerHTML = '';
+      stops.forEach(stop => {
+        const card = document.createElement('div');
+        card.className = 'stop-card';
+        card.innerHTML = `
+          <div class="stop-header">
+            <strong>Stop #${stop.sequence}</strong>
+            <div class="d-flex gap-2 align-items-center">
+              <label class="small text-muted mb-0">Sequence</label>
+              <input type="number" min="1" class="form-control form-control-sm" style="width:78px;" value="${stop.sequence}" data-role="seq" />
+              <button class="btn btn-outline-danger btn-sm" data-role="remove-stop"><i class="fas fa-trash"></i></button>
+            </div>
+          </div>
+          <div class="field-wrap mb-2">
+            <label class="form-label fw-semibold">Delivery Facility <span class="text-danger">*</span></label>
+            <input class="form-control" data-role="facility-input" placeholder="Search and select a facility" value="${stop.facilityText || ''}" autocomplete="off" />
+            <div class="suggestions" data-role="facility-suggest"></div>
+          </div>
+          <div class="table-responsive">
+            <table class="table table-sm mini-grid mb-1">
+              <thead><tr><th style="width:45%;">Product Class</th><th style="width:35%;">Pallets</th><th style="width:20%;"></th></tr></thead>
+              <tbody data-role="products-body"></tbody>
+            </table>
+          </div>
+          <button class="btn btn-outline-primary btn-sm" data-role="add-line"><i class="fas fa-plus"></i> Add Line</button>
+        `;
+        const seqInput = card.querySelector('[data-role="seq"]');
+        seqInput.addEventListener('input', () => { stop.sequence = Number(seqInput.value || stop.sequence); validateForm(); });
+        card.querySelector('[data-role="remove-stop"]').addEventListener('click', () => removeStop(stop.id));
+        card.querySelector('[data-role="add-line"]').addEventListener('click', () => addProductLine(stop.id));
+
+        const tbody = card.querySelector('[data-role="products-body"]');
+        stop.products.forEach((p, idx) => {
+          if (!p.productClass) p.productClass = PRODUCT_CLASSES[0];
+          const tr = document.createElement('tr');
+          tr.innerHTML = `
+            <td><select class="form-select form-select-sm" data-role="pclass">${PRODUCT_CLASSES.map(x => `<option ${x===p.productClass?'selected':''} value="${x}">${x}</option>`).join('')}</select></td>
+            <td><input type="number" min="0" step="0.01" class="form-control form-control-sm" data-role="pallets" value="${p.pallets}" /></td>
+            <td><button class="btn btn-outline-danger btn-sm" data-role="remove-line"><i class="fas fa-times"></i></button></td>
+          `;
+          tr.querySelector('[data-role="pclass"]').addEventListener('change', e => { p.productClass = e.target.value; validateForm(); });
+          tr.querySelector('[data-role="pallets"]').addEventListener('input', e => { p.pallets = e.target.value; validateForm(); });
+          tr.querySelector('[data-role="remove-line"]').addEventListener('click', () => removeProductLine(stop.id, idx));
+          tbody.appendChild(tr);
+        });
+
+        const facilityInput = card.querySelector('[data-role="facility-input"]');
+        const facilitySuggest = card.querySelector('[data-role="facility-suggest"]');
+        facilityInput.addEventListener('input', () => {
+          stop.facilitySelection = null;
+          stop.facilityText = facilityInput.value;
+          showSuggestions(facilitySuggest, facilityMatches(facilityInput.value), pick => {
+            stop.facilitySelection = pick;
+            stop.facilityText = `${pick.FacilityId}${pick.Description ? ' - ' + pick.Description : ''}`;
+            facilityInput.value = stop.facilityText;
+            facilitySuggest.classList.remove('visible');
+            validateForm();
+          });
+          validateForm();
+        });
+        facilityInput.addEventListener('focus', () => showSuggestions(facilitySuggest, facilityMatches(facilityInput.value), pick => {
+          stop.facilitySelection = pick;
+          stop.facilityText = `${pick.FacilityId}${pick.Description ? ' - ' + pick.Description : ''}`;
+          facilityInput.value = stop.facilityText;
+          facilitySuggest.classList.remove('visible');
+          validateForm();
+        }));
+        facilityInput.addEventListener('blur', () => setTimeout(() => facilitySuggest.classList.remove('visible'), 120));
+        wrap.appendChild(card);
       });
     }
-
-    async function authenticate() {
-      const org = document.getElementById('orgInput').value.trim();
-      const authStatus = document.getElementById('authStatus');
-      if (!org) {
-        setStatus(authStatus, 'ORG is required.', 'error');
-        return;
+    function validateForm() {
+      const submitBtn = document.getElementById('submitBtn');
+      const submitStatus = document.getElementById('submitStatus');
+      const terminal = document.getElementById('terminalSelect').value;
+      if (!terminal) { submitBtn.disabled = true; setStatus(submitStatus, 'Terminal is required.', 'error'); return false; }
+      if (!originSelection) { submitBtn.disabled = true; setStatus(submitStatus, 'Origin must be a valid facility in the master.', 'error'); return false; }
+      if (!stops.length) { submitBtn.disabled = true; setStatus(submitStatus, 'At least one delivery stop is required.', 'error'); return false; }
+      for (const s of stops) {
+        if (!s.facilitySelection) { submitBtn.disabled = true; setStatus(submitStatus, `Stop ${s.sequence}: Delivery Facility must be selected from master.`, 'error'); return false; }
+        if (!s.products.length) { submitBtn.disabled = true; setStatus(submitStatus, `Stop ${s.sequence}: At least one Product Class line is required.`, 'error'); return false; }
+        for (const p of s.products) {
+          if (!p.productClass) { submitBtn.disabled = true; setStatus(submitStatus, `Stop ${s.sequence}: Product Class is required.`, 'error'); return false; }
+          if (p.pallets === '' || Number(p.pallets) < 0) { submitBtn.disabled = true; setStatus(submitStatus, `Stop ${s.sequence}: Pallets must be zero or greater.`, 'error'); return false; }
+        }
       }
-      setStatus(authStatus, 'Authenticating...', 'info');
-      const res = await api('auth', { org });
-      if (!res.success) {
-        setStatus(authStatus, res.error || 'Authentication failed.', 'error');
-        return;
-      }
-      token = res.token;
-      setStatus(authStatus, 'Authenticated.', 'success');
-      document.getElementById('authSection').style.display = 'none';
-      document.getElementById('mainScreen').style.display = '';
+      const ps = document.getElementById('pickupStart').value, pe = document.getElementById('pickupEnd').value;
+      const ds = document.getElementById('deliveryStart').value, de = document.getElementById('deliveryEnd').value;
+      if (!ps || !pe || !ds || !de) { submitBtn.disabled = true; setStatus(submitStatus, 'All pickup/delivery date fields are required.', 'error'); return false; }
+      if (new Date(pe) <= new Date(ps)) { submitBtn.disabled = true; setStatus(submitStatus, 'Pickup End must be later than Pickup Start.', 'error'); return false; }
+      if (new Date(ds) <= new Date(pe)) { submitBtn.disabled = true; setStatus(submitStatus, 'Delivery Start must be later than Pickup End.', 'error'); return false; }
+      if (new Date(de) <= new Date(ds)) { submitBtn.disabled = true; setStatus(submitStatus, 'Delivery End must be later than Delivery Start.', 'error'); return false; }
+      submitBtn.disabled = false;
+      setStatus(submitStatus, 'Ready to submit.', 'success');
+      return true;
     }
-
     async function submitRequest() {
+      if (!validateForm()) return;
       const submitBtn = document.getElementById('submitBtn');
       const submitStatus = document.getElementById('submitStatus');
       const org = document.getElementById('orgInput').value.trim();
-      const sampleInput = document.getElementById('sampleInput').value.trim();
+      const payload = {
+        orderType: 'Manual Dispatch Request',
+        terminal: document.getElementById('terminalSelect').value,
+        defaults: {
+          driverType: document.getElementById('driverType').value,
+          tractorType: document.getElementById('tractorType').value,
+          trailerType: document.getElementById('trailerType').value
+        },
+        originFacilityId: originSelection?.FacilityId || null,
+        pickupStart: document.getElementById('pickupStart').value,
+        pickupEnd: document.getElementById('pickupEnd').value,
+        deliveryStart: document.getElementById('deliveryStart').value,
+        deliveryEnd: document.getElementById('deliveryEnd').value,
+        stops: stops.map(s => ({
+          sequence: Number(s.sequence),
+          deliveryFacilityId: s.facilitySelection?.FacilityId || null,
+          productLines: s.products.map(p => ({ productClass: p.productClass, pallets: Number(p.pallets) }))
+        }))
+      };
 
       submitBtn.disabled = true;
       setStatus(submitStatus, 'Submitting request...', 'info');
       try {
-        const res = await api('submit_request', { org, token, sampleInput });
-        if (!res.success) {
-          setStatus(submitStatus, res.error || 'Submit failed.', 'error');
-          return;
-        }
+        const res = await api('submit_request', { org, token, payload });
+        if (!res.success) { setStatus(submitStatus, res.error || 'Submit failed.', 'error'); return; }
         setStatus(submitStatus, res.message || 'Submitted.', 'success');
       } catch (e) {
         setStatus(submitStatus, 'Submit failed.', 'error');
       } finally {
-        submitBtn.disabled = false;
+        validateForm();
       }
+    }
+    async function loadFormData() {
+      const org = document.getElementById('orgInput').value.trim();
+      const submitStatus = document.getElementById('submitStatus');
+      setStatus(submitStatus, 'Loading terminals and facilities...', 'info');
+      const res = await api('facilities', { org, token });
+      if (!res.success) { setStatus(submitStatus, res.error || 'Failed loading facilities.', 'error'); return false; }
+      allFacilities = (res.facilities || []).sort((a, b) => (a.FacilityId || '').localeCompare(b.FacilityId || ''));
+      const terminalSel = document.getElementById('terminalSelect');
+      terminalSel.innerHTML = '<option value="">-- Select Terminal --</option>';
+      (res.terminals || []).forEach(t => {
+        const o = document.createElement('option');
+        o.value = t.TerminalId;
+        o.textContent = t.Display || t.TerminalId;
+        terminalSel.appendChild(o);
+      });
+      if (res.terminals?.length) terminalSel.value = res.terminals[0].TerminalId;
+      setTerminalDefaults();
+      setStatus(submitStatus, 'Terminals/facilities loaded.', 'success');
+      return true;
+    }
+    async function authenticate() {
+      const org = document.getElementById('orgInput').value.trim();
+      const authStatus = document.getElementById('authStatus');
+      if (!org) { setStatus(authStatus, 'ORG is required.', 'error'); return; }
+      setStatus(authStatus, 'Authenticating...', 'info');
+      const res = await api('auth', { org });
+      if (!res.success) { setStatus(authStatus, res.error || 'Authentication failed.', 'error'); return; }
+      token = res.token;
+      setStatus(authStatus, 'Authenticated.', 'success');
+      document.getElementById('authSection').style.display = 'none';
+      document.getElementById('mainScreen').style.display = '';
+      await loadFormData();
+      applyDateDefaults();
+      if (!stops.length) addStop();
+      bindOriginPicker();
+      validateForm();
     }
 
     document.getElementById('authBtn').addEventListener('click', authenticate);
     document.getElementById('submitBtn').addEventListener('click', submitRequest);
-    document.getElementById('orgInput').addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') authenticate();
-    });
-    document.getElementById('sampleInput').addEventListener('keydown', (e) => {
-      if (e.key === 'Enter' && !document.getElementById('submitBtn').disabled) submitRequest();
-    });
+    document.getElementById('addStopBtn').addEventListener('click', addStop);
+    document.getElementById('terminalSelect').addEventListener('change', () => { setTerminalDefaults(); validateForm(); });
+    ['pickupStart','pickupEnd','deliveryStart','deliveryEnd'].forEach(id => document.getElementById(id).addEventListener('input', validateForm));
+    document.getElementById('orgInput').addEventListener('keydown', (e) => { if (e.key === 'Enter') authenticate(); });
 
     const themeBtn = document.getElementById('themeBtn');
     const themePopup = document.getElementById('themePopup');
-    themeBtn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      themePopup.classList.toggle('visible');
-    });
+    themeBtn.addEventListener('click', (e) => { e.stopPropagation(); themePopup.classList.toggle('visible'); });
     document.addEventListener('click', () => themePopup.classList.remove('visible'));
     themePopup.addEventListener('click', (e) => e.stopPropagation());
-    document.querySelectorAll('.theme-option').forEach(opt => {
-      opt.addEventListener('click', () => {
-        applyTheme(opt.dataset.theme);
-        themePopup.classList.remove('visible');
-      });
-    });
+    document.querySelectorAll('.theme-option').forEach(opt => opt.addEventListener('click', () => { applyTheme(opt.dataset.theme); themePopup.classList.remove('visible'); }));
 
-    // URL parameters: ORG/Organization auto-auth, Theme=N hides selector.
     (async function init() {
       try { await api('app_opened', {}); } catch (_) {}
-
       const params = new URLSearchParams(window.location.search);
       const startupOrg = (params.get('ORG') || params.get('Organization') || '').trim();
       if (startupOrg) document.getElementById('orgInput').value = startupOrg;
-
-      const hideTheme = (params.get('Theme') || '').toUpperCase() === 'N';
-      if (hideTheme) {
-        document.getElementById('themeContainer').style.display = 'none';
-      }
-
+      if ((params.get('Theme') || '').toUpperCase() === 'N') document.getElementById('themeContainer').style.display = 'none';
       const savedTheme = localStorage.getItem('dispatch_request_theme') || 'light';
       applyTheme(THEMES[savedTheme] ? savedTheme : 'light');
-
-      if (startupOrg) {
-        await authenticate();
-      } else {
-        setStatus(document.getElementById('authStatus'), 'Enter ORG to authenticate.', 'info');
-      }
+      if (startupOrg) await authenticate(); else setStatus(document.getElementById('authStatus'), 'Enter ORG to authenticate.', 'info');
     })();
   </script>
 </body>
