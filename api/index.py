@@ -453,8 +453,8 @@ def submit_request():
             return 0.0
 
     def build_to_payload_for_stop(to_id, form_payload, stop, stop_idx):
-        destination_facility_id = (stop.get("deliveryFacilityId") or "").strip()
-        if not destination_facility_id:
+        header_destination_facility_id = (stop.get("deliveryFacilityId") or "").strip()
+        if not header_destination_facility_id:
             raise Exception(f"Stop {stop_idx + 1}: destination facility is required")
 
         product_lines = stop.get("productLines", []) or []
@@ -487,7 +487,8 @@ def submit_request():
                 {
                     "TransportationOrderLineId": f"{stop_idx + 1}-{line_idx + 1}",
                     "TransportationOrderId": to_id,
-                    "DestinationFacilityId": destination_facility_id,
+                    # Keep line destination aligned with TO header destination.
+                    "DestinationFacilityId": header_destination_facility_id,
                     "ProductClassId": (line.get("productClass") or "").strip() or None,
                     "OrderedQuantity": pallets,
                     "QuantityUomId": "pallet",
@@ -506,6 +507,7 @@ def submit_request():
             "TransportationOrderId": to_id,
             "OrderTypeId": form_payload.get("orderTypeId"),
             "OriginFacilityId": form_payload.get("originFacilityId"),
+            "DestinationFacilityId": header_destination_facility_id,
             "PickupStartDateTime": form_payload.get("pickupStart"),
             "PickupEndDateTime": form_payload.get("pickupEnd"),
             "DeliveryStartDateTime": form_payload.get("deliveryStart"),
