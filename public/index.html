@@ -662,19 +662,25 @@
       setStatus(submitStatus, 'Submitting request...', 'info');
       try {
         const res = await api('submit_request', { org, token, payload });
-        const toDebug = res && res.toCreateDebug ? res.toCreateDebug : null;
-        if (toDebug) {
-          console.groupCollapsed('[Dispatch Request] TO Create Debug');
-          console.log('POST /routing/api/routing/transportationOrder payload:', toDebug.requestPayload);
-          console.log('TO create full response:', {
-            status: toDebug.responseStatus,
-            responseJson: toDebug.responseJson,
-            responseText: toDebug.responseText
+        const toDebug = res && Array.isArray(res.toCreateDebug) ? res.toCreateDebug : [];
+        if (toDebug.length) {
+          toDebug.forEach((dbg, idx) => {
+            const seqLabel = dbg && dbg.stopSequence != null ? `stop ${dbg.stopSequence}` : `index ${idx + 1}`;
+            console.groupCollapsed(`[Dispatch Request] TO Create Debug (${seqLabel})`);
+            console.log('POST /routing/api/routing/transportationOrder payload:', dbg.requestPayload);
+            console.log('TO create full response:', {
+              status: dbg.responseStatus,
+              responseJson: dbg.responseJson,
+              responseText: dbg.responseText
+            });
+            console.groupEnd();
           });
-          console.groupEnd();
         }
         if (!res.success) { setStatus(submitStatus, res.error || 'Submit failed.', 'error'); return; }
-        const niceMsg = res.message || (res.toNumber ? `Transportation Order created successfully: ${res.toNumber}` : 'Submitted.');
+        const niceMsg = res.message
+          || (Array.isArray(res.toNumbers) && res.toNumbers.length
+            ? `Transportation Orders created successfully: ${res.toNumbers.join(', ')}`
+            : (res.toNumber ? `Transportation Order created successfully: ${res.toNumber}` : 'Submitted.'));
         setStatus(submitStatus, niceMsg, 'success');
       } catch (e) {
         setStatus(submitStatus, 'Submit failed.', 'error');

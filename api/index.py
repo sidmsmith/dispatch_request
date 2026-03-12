@@ -399,13 +399,20 @@ def submit_request():
     if not org or not token:
         return jsonify({"success": False, "error": "Missing org/token"})
 
+    if not isinstance(payload, dict):
+        return jsonify({"success": False, "error": "Invalid request payload"})
+    form_stops = payload.get("stops", []) or []
+    if not isinstance(form_stops, list) or not form_stops:
+        return jsonify({"success": False, "error": "At least one stop line is required to create a TO"})
+
+    to_count = len(form_stops)
     # REQUIRED ENVIRONMENT CONFIG:
     # This app expects a NextUp counter named TransportationOrderId to exist.
     # If the counter is missing/not configured in an environment, we stop here
     # and return a clear message to the UI.
     nextup_url = (
         f"https://{API_HOST}/routing/api/nextup/getNextupNumbersByCounterType"
-        "?counterTypeId=TransportationOrderId&count=1"
+        f"?counterTypeId=TransportationOrderId&count={to_count}"
     )
     try:
         nr = requests.get(
@@ -423,8 +430,8 @@ def submit_request():
             )
         nbody = nr.json() or {}
         numbers = nbody.get("data", []) or []
-        to_number = numbers[0] if numbers else None
-        if not to_number:
+        to_numbers = [str(n).strip() for n in numbers if str(n).strip()]
+        if len(to_numbers) < to_count:
             return jsonify(
                 {
                     "success": False,
@@ -445,61 +452,55 @@ def submit_request():
         except Exception:
             return 0.0
 
-    def build_to_payload(to_id, form_payload):
-        stops = form_payload.get("stops", []) or []
-        if not stops:
-            raise Exception("At least one stop line is required to create a TO")
+    def build_to_payload_for_stop(to_id, form_payload, stop, stop_idx):
+        destination_facility_id = (stop.get("deliveryFacilityId") or "").strip()
+        if not destination_facility_id:
+            raise Exception(f"Stop {stop_idx + 1}: destination facility is required")
 
+        product_lines = stop.get("productLines", []) or []
+        if not product_lines:
+            raise Exception(f"Stop {stop_idx + 1}: at least one product line is required")
         lines = []
-        for stop_idx, stop in enumerate(stops):
-            destination_facility_id = (stop.get("deliveryFacilityId") or "").strip()
-            if not destination_facility_id:
-                raise Exception(f"Stop {stop_idx + 1}: destination facility is required")
-
-            product_lines = stop.get("productLines", []) or []
-            if not product_lines:
-                raise Exception(f"Stop {stop_idx + 1}: at least one product line is required")
-
-            for line_idx, line in enumerate(product_lines):
-                pallets = as_num(line.get("pallets"))
-                if pallets <= 0:
-                    raise Exception(
-                        f"palletQuantity must be > 0 for stop {stop_idx + 1}, line {line_idx + 1}"
-                    )
-                avg_weight = as_num(line.get("avgWeight"))
-                if avg_weight <= 0:
-                    raise Exception(
-                        f"avgWeight must be > 0 for stop {stop_idx + 1}, line {line_idx + 1}"
-                    )
-                avg_cube = as_num(line.get("avgCube"))
-                if avg_cube <= 0:
-                    raise Exception(
-                        f"avgCube must be > 0 for stop {stop_idx + 1}, line {line_idx + 1}"
-                    )
-
-                extended_weight = pallets * avg_weight
-                # Cube currently comes from the UI default table per Product Class.
-                # TODO: replace/augment with server-side product-class cube rules.
-                extended_volume = pallets * avg_cube
-
-                lines.append(
-                    {
-                        "TransportationOrderLineId": f"{stop_idx + 1}-{line_idx + 1}",
-                        "TransportationOrderId": to_id,
-                        "DestinationFacilityId": destination_facility_id,
-                        "ProductClassId": (line.get("productClass") or "").strip() or None,
-                        "OrderedQuantity": pallets,
-                        "QuantityUomId": "pallet",
-                        "ExtendedWeight": extended_weight,
-                        "ExtendedVolume": extended_volume,
-                        "WeightUomId": "lb",
-                        "VolumeUomId": "cuft",
-                        "PickupStartDateTime": form_payload.get("pickupStart"),
-                        "PickupEndDateTime": form_payload.get("pickupEnd"),
-                        "DeliveryStartDateTime": form_payload.get("deliveryStart"),
-                        "DeliveryEndDateTime": form_payload.get("deliveryEnd"),
-                    }
+        for line_idx, line in enumerate(product_lines):
+            pallets = as_num(line.get("pallets"))
+            if pallets <= 0:
+                raise Exception(
+                    f"palletQuantity must be > 0 for stop {stop_idx + 1}, line {line_idx + 1}"
                 )
+            avg_weight = as_num(line.get("avgWeight"))
+            if avg_weight <= 0:
+                raise Exception(
+                    f"avgWeight must be > 0 for stop {stop_idx + 1}, line {line_idx + 1}"
+                )
+            avg_cube = as_num(line.get("avgCube"))
+            if avg_cube <= 0:
+                raise Exception(
+                    f"avgCube must be > 0 for stop {stop_idx + 1}, line {line_idx + 1}"
+                )
+
+            extended_weight = pallets * avg_weight
+            # Cube currently comes from the UI default table per Product Class.
+            # TODO: replace/augment with server-side product-class cube rules.
+            extended_volume = pallets * avg_cube
+
+            lines.append(
+                {
+                    "TransportationOrderLineId": f"{stop_idx + 1}-{line_idx + 1}",
+                    "TransportationOrderId": to_id,
+                    "DestinationFacilityId": destination_facility_id,
+                    "ProductClassId": (line.get("productClass") or "").strip() or None,
+                    "OrderedQuantity": pallets,
+                    "QuantityUomId": "pallet",
+                    "ExtendedWeight": extended_weight,
+                    "ExtendedVolume": extended_volume,
+                    "WeightUomId": "lb",
+                    "VolumeUomId": "cuft",
+                    "PickupStartDateTime": form_payload.get("pickupStart"),
+                    "PickupEndDateTime": form_payload.get("pickupEnd"),
+                    "DeliveryStartDateTime": form_payload.get("deliveryStart"),
+                    "DeliveryEndDateTime": form_payload.get("deliveryEnd"),
+                }
+            )
 
         return {
             "TransportationOrderId": to_id,
@@ -515,60 +516,79 @@ def submit_request():
             "TransportationOrderLine": lines,
         }
 
-    try:
-        to_payload = build_to_payload(to_number, payload if isinstance(payload, dict) else {})
-    except Exception as e:
-        return jsonify({"success": False, "error": str(e)})
-
     create_url = f"https://{API_HOST}/routing/api/routing/transportationOrder"
-    create_debug = {"requestPayload": to_payload}
-    try:
-        cr = requests.post(
-            create_url,
-            json=to_payload,
-            headers=manhattan_headers(org, token),
-            timeout=45,
-            verify=False,
-        )
-        create_debug["responseStatus"] = cr.status_code
-        create_debug["responseText"] = cr.text
+    created_numbers = []
+    create_results = []
+    to_create_debug = []
+    for stop_idx, stop in enumerate(form_stops):
+        to_number = to_numbers[stop_idx]
         try:
-            create_debug["responseJson"] = cr.json() if cr.text else {}
-        except Exception:
-            create_debug["responseJson"] = None
-        if not cr.ok:
+            to_payload = build_to_payload_for_stop(to_number, payload, stop, stop_idx)
+        except Exception as e:
+            return jsonify({"success": False, "error": str(e), "toCreateDebug": to_create_debug})
+
+        create_debug = {
+            "stopSequence": stop.get("sequence"),
+            "toNumber": to_number,
+            "requestPayload": to_payload,
+        }
+        try:
+            cr = requests.post(
+                create_url,
+                json=to_payload,
+                headers=manhattan_headers(org, token),
+                timeout=45,
+                verify=False,
+            )
+            create_debug["responseStatus"] = cr.status_code
+            create_debug["responseText"] = cr.text
+            try:
+                create_debug["responseJson"] = cr.json() if cr.text else {}
+            except Exception:
+                create_debug["responseJson"] = None
+            to_create_debug.append(create_debug)
+            if not cr.ok:
+                return jsonify(
+                    {
+                        "success": False,
+                        "error": f"Create TO failed: HTTP {cr.status_code}",
+                        "toCreateDebug": to_create_debug,
+                    }
+                )
+            create_body = (
+                create_debug.get("responseJson")
+                if create_debug.get("responseJson") is not None
+                else {}
+            )
+            created_numbers.append(to_number)
+            create_results.append(create_body)
+        except Exception as e:
+            to_create_debug.append(create_debug)
             return jsonify(
                 {
                     "success": False,
-                    "error": f"Create TO failed: HTTP {cr.status_code}",
-                    "toCreateDebug": create_debug,
+                    "error": f"Create TO failed: {e}",
+                    "toCreateDebug": to_create_debug,
                 }
             )
-        create_body = create_debug.get("responseJson") if create_debug.get("responseJson") is not None else {}
-    except Exception as e:
-        return jsonify(
-            {
-                "success": False,
-                "error": f"Create TO failed: {e}",
-                "toCreateDebug": create_debug,
-            }
-        )
 
     send_ha_message(
         {
             "event": "dispatch_request_submit",
             "org": org,
-            "to_number": to_number,
+            "to_numbers": created_numbers,
             "payload_keys": list(payload.keys()) if isinstance(payload, dict) else [],
         }
     )
     return jsonify(
         {
             "success": True,
-            "message": f"Transportation Order created successfully: {to_number}",
-            "toNumber": to_number,
-            "createResult": create_body,
-            "toCreateDebug": create_debug,
+            "message": f"Transportation Orders created successfully: {', '.join(created_numbers)}",
+            "toNumber": created_numbers[0] if created_numbers else None,
+            "toNumbers": created_numbers,
+            "createResult": create_results[0] if create_results else {},
+            "createResults": create_results,
+            "toCreateDebug": to_create_debug,
             "echo": payload,
         }
     )
