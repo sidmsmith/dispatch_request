@@ -521,6 +521,7 @@ def submit_request():
         return jsonify({"success": False, "error": str(e)})
 
     create_url = f"https://{API_HOST}/routing/api/routing/transportationOrder"
+    create_debug = {"requestPayload": to_payload}
     try:
         cr = requests.post(
             create_url,
@@ -529,16 +530,29 @@ def submit_request():
             timeout=45,
             verify=False,
         )
+        create_debug["responseStatus"] = cr.status_code
+        create_debug["responseText"] = cr.text
+        try:
+            create_debug["responseJson"] = cr.json() if cr.text else {}
+        except Exception:
+            create_debug["responseJson"] = None
         if not cr.ok:
             return jsonify(
                 {
                     "success": False,
-                    "error": f"Create TO failed: HTTP {cr.status_code}: {cr.text[:400]}",
+                    "error": f"Create TO failed: HTTP {cr.status_code}",
+                    "toCreateDebug": create_debug,
                 }
             )
-        create_body = cr.json() if cr.text else {}
+        create_body = create_debug.get("responseJson") if create_debug.get("responseJson") is not None else {}
     except Exception as e:
-        return jsonify({"success": False, "error": f"Create TO failed: {e}"})
+        return jsonify(
+            {
+                "success": False,
+                "error": f"Create TO failed: {e}",
+                "toCreateDebug": create_debug,
+            }
+        )
 
     send_ha_message(
         {
@@ -554,6 +568,7 @@ def submit_request():
             "message": f"Transportation Order created successfully: {to_number}",
             "toNumber": to_number,
             "createResult": create_body,
+            "toCreateDebug": create_debug,
             "echo": payload,
         }
     )

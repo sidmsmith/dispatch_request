@@ -662,6 +662,17 @@
       setStatus(submitStatus, 'Submitting request...', 'info');
       try {
         const res = await api('submit_request', { org, token, payload });
+        const toDebug = res && res.toCreateDebug ? res.toCreateDebug : null;
+        if (toDebug) {
+          console.groupCollapsed('[Dispatch Request] TO Create Debug');
+          console.log('POST /routing/api/routing/transportationOrder payload:', toDebug.requestPayload);
+          console.log('TO create full response:', {
+            status: toDebug.responseStatus,
+            responseJson: toDebug.responseJson,
+            responseText: toDebug.responseText
+          });
+          console.groupEnd();
+        }
         if (!res.success) { setStatus(submitStatus, res.error || 'Submit failed.', 'error'); return; }
         const niceMsg = res.message || (res.toNumber ? `Transportation Order created successfully: ${res.toNumber}` : 'Submitted.');
         setStatus(submitStatus, niceMsg, 'success');
