@@ -439,7 +439,102 @@ def submit_request():
             }
         )
 
-    # Placeholder for subsequent API chain that will use the generated TO number.
+    def as_num(v):
+        try:
+            return float(v)
+        except Exception:
+            return 0.0
+
+    def build_to_payload(to_id, form_payload):
+        stops = form_payload.get("stops", []) or []
+        if not stops:
+            raise Exception("At least one stop line is required to create a TO")
+
+        lines = []
+        for stop_idx, stop in enumerate(stops):
+            destination_facility_id = (stop.get("deliveryFacilityId") or "").strip()
+            if not destination_facility_id:
+                raise Exception(f"Stop {stop_idx + 1}: destination facility is required")
+
+            product_lines = stop.get("productLines", []) or []
+            if not product_lines:
+                raise Exception(f"Stop {stop_idx + 1}: at least one product line is required")
+
+            for line_idx, line in enumerate(product_lines):
+                pallets = as_num(line.get("pallets"))
+                if pallets <= 0:
+                    raise Exception(
+                        f"palletQuantity must be > 0 for stop {stop_idx + 1}, line {line_idx + 1}"
+                    )
+                avg_weight = as_num(line.get("avgWeight"))
+                if avg_weight <= 0:
+                    raise Exception(
+                        f"avgWeight must be > 0 for stop {stop_idx + 1}, line {line_idx + 1}"
+                    )
+
+                extended_weight = pallets * avg_weight
+                # Temporary default: 60 cuft per pallet.
+                # TODO: replace with product-class specific cube logic/rules.
+                extended_volume = pallets * 60
+
+                lines.append(
+                    {
+                        "TransportationOrderLineId": f"{stop_idx + 1}-{line_idx + 1}",
+                        "TransportationOrderId": to_id,
+                        "DestinationFacilityId": destination_facility_id,
+                        "ProductClassId": (line.get("productClass") or "").strip() or None,
+                        "OrderedQuantity": pallets,
+                        "QuantityUomId": "pallet",
+                        "ExtendedWeight": extended_weight,
+                        "ExtendedVolume": extended_volume,
+                        "WeightUomId": "lb",
+                        "VolumeUomId": "cuft",
+                        "PickupStartDateTime": form_payload.get("pickupStart"),
+                        "PickupEndDateTime": form_payload.get("pickupEnd"),
+                        "DeliveryStartDateTime": form_payload.get("deliveryStart"),
+                        "DeliveryEndDateTime": form_payload.get("deliveryEnd"),
+                    }
+                )
+
+        return {
+            "TransportationOrderId": to_id,
+            "OrderTypeId": form_payload.get("orderTypeId"),
+            "OriginFacilityId": form_payload.get("originFacilityId"),
+            "PickupStartDateTime": form_payload.get("pickupStart"),
+            "PickupEndDateTime": form_payload.get("pickupEnd"),
+            "DeliveryStartDateTime": form_payload.get("deliveryStart"),
+            "DeliveryEndDateTime": form_payload.get("deliveryEnd"),
+            "PlanningTypeId": form_payload.get("planningTypeId") or "Outbound",
+            "ToPlanningStatusId": form_payload.get("planningStatusId") or "1000",
+            "PrePlanTransportation": False,
+            "TransportationOrderLine": lines,
+        }
+
+    try:
+        to_payload = build_to_payload(to_number, payload if isinstance(payload, dict) else {})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)})
+
+    create_url = f"https://{API_HOST}/routing/api/routing/transportationOrder"
+    try:
+        cr = requests.post(
+            create_url,
+            json=to_payload,
+            headers=manhattan_headers(org, token),
+            timeout=45,
+            verify=False,
+        )
+        if not cr.ok:
+            return jsonify(
+                {
+                    "success": False,
+                    "error": f"Create TO failed: HTTP {cr.status_code}: {cr.text[:400]}",
+                }
+            )
+        create_body = cr.json() if cr.text else {}
+    except Exception as e:
+        return jsonify({"success": False, "error": f"Create TO failed: {e}"})
+
     send_ha_message(
         {
             "event": "dispatch_request_submit",
@@ -451,8 +546,9 @@ def submit_request():
     return jsonify(
         {
             "success": True,
-            "message": f"Generated Transportation Order Number: {to_number}",
+            "message": f"Transportation Order created successfully: {to_number}",
             "toNumber": to_number,
+            "createResult": create_body,
             "echo": payload,
         }
     )

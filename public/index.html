@@ -518,9 +518,7 @@
       try {
         const res = await api('submit_request', { org, token, payload });
         if (!res.success) { setStatus(submitStatus, res.error || 'Submit failed.', 'error'); return; }
-        const niceMsg = res.toNumber
-          ? `NextUp TO Number Generated: ${res.toNumber}`
-          : (res.message || 'Submitted.');
+        const niceMsg = res.message || (res.toNumber ? `Transportation Order created successfully: ${res.toNumber}` : 'Submitted.');
         setStatus(submitStatus, niceMsg, 'success');
       } catch (e) {
         setStatus(submitStatus, 'Submit failed.', 'error');
