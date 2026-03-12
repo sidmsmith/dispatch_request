@@ -56,11 +56,11 @@
     .readonly-field { background: color-mix(in srgb, var(--input-bg) 90%, #d1d5db 10%); }
     .field-wrap { position: relative; }
     .stop-card {
-      border: 1px dashed #f2b88c;
+      border: 1px dashed var(--border-color);
       border-radius: 10px;
       padding: 0.7rem;
       margin-bottom: 0.75rem;
-      background: #fff1e6;
+      background: #ffffff;
       position: relative;
       transition: box-shadow 0.12s ease, transform 0.12s ease, border-color 0.12s ease;
     }
@@ -221,6 +221,7 @@
     let idSeq = 1;
     let draggingStopId = null;
     let isRestoringState = false;
+    let isBootstrappingForm = false;
     const FORM_STORAGE_KEY = 'dispatch_request_form_state_v1';
     const PRODUCT_CLASS_WEIGHT_DEFAULTS_RAW = {
       '12BR': 1500, '12OM': 1500, 'ACCSSRY': 1100, 'ACID': 2150, 'APPAREL': 1000,
@@ -321,7 +322,7 @@
       sel.value = defaultId || '';
     }
     function saveFormState() {
-      if (isRestoringState) return;
+      if (isRestoringState || isBootstrappingForm) return;
       const state = {
         terminalId: document.getElementById('terminalSelect').value || '',
         originFacilityId: document.getElementById('originSelect').value || '',
@@ -674,36 +675,41 @@
       const org = document.getElementById('orgInput').value.trim();
       const submitStatus = document.getElementById('submitStatus');
       setStatus(submitStatus, 'Loading terminals, facilities, and product classes...', 'info');
-      const [facRes, pcRes] = await Promise.all([
-        api('facilities', { org, token }),
-        api('product_classes', { org, token })
-      ]);
-      if (!facRes.success) { setStatus(submitStatus, facRes.error || 'Failed loading facilities.', 'error'); return false; }
-      if (!pcRes.success) { setStatus(submitStatus, pcRes.error || 'Failed loading product classes.', 'error'); return false; }
-      allFacilities = (facRes.facilities || []).sort((a, b) => (a.FacilityId || '').localeCompare(b.FacilityId || ''));
-      productClassOptions = (pcRes.productClasses || []).slice();
-      facilityOptionsHtml = '<option value="">-- Select Facility --</option>' +
-        allFacilities.map(f => `<option value="${f.FacilityId}">${facilityLabel(f)}</option>`).join('');
+      isBootstrappingForm = true;
+      try {
+        const [facRes, pcRes] = await Promise.all([
+          api('facilities', { org, token }),
+          api('product_classes', { org, token })
+        ]);
+        if (!facRes.success) { setStatus(submitStatus, facRes.error || 'Failed loading facilities.', 'error'); return false; }
+        if (!pcRes.success) { setStatus(submitStatus, pcRes.error || 'Failed loading product classes.', 'error'); return false; }
+        allFacilities = (facRes.facilities || []).sort((a, b) => (a.FacilityId || '').localeCompare(b.FacilityId || ''));
+        productClassOptions = (pcRes.productClasses || []).slice();
+        facilityOptionsHtml = '<option value="">-- Select Facility --</option>' +
+          allFacilities.map(f => `<option value="${f.FacilityId}">${facilityLabel(f)}</option>`).join('');
 
-      const originSelect = document.getElementById('originSelect');
-      originSelect.innerHTML = facilityOptionsHtml;
-      originSelect.addEventListener('change', validateForm);
+        const originSelect = document.getElementById('originSelect');
+        originSelect.innerHTML = facilityOptionsHtml;
+        originSelect.addEventListener('change', validateForm);
 
-      const terminalSel = document.getElementById('terminalSelect');
-      terminalSel.innerHTML = '<option value="">-- Select Terminal --</option>';
-      (facRes.terminals || []).forEach(t => {
-        const o = document.createElement('option');
-        o.value = t.TerminalId;
-        o.textContent = t.Display || t.TerminalId;
-        terminalSel.appendChild(o);
-      });
-      terminalSel.value = '';
-      resetTypeDropdowns();
-      stops = [];
-      idSeq = 1;
-      addStop();
-      setStatus(submitStatus, 'Terminals/facilities/product classes loaded.', 'success');
-      return true;
+        const terminalSel = document.getElementById('terminalSelect');
+        terminalSel.innerHTML = '<option value="">-- Select Terminal --</option>';
+        (facRes.terminals || []).forEach(t => {
+          const o = document.createElement('option');
+          o.value = t.TerminalId;
+          o.textContent = t.Display || t.TerminalId;
+          terminalSel.appendChild(o);
+        });
+        terminalSel.value = '';
+        resetTypeDropdowns();
+        stops = [];
+        idSeq = 1;
+        addStop();
+        setStatus(submitStatus, 'Terminals/facilities/product classes loaded.', 'success');
+        return true;
+      } finally {
+        isBootstrappingForm = false;
+      }
     }
     async function authenticate() {
       const org = document.getElementById('orgInput').value.trim();
