@@ -81,6 +81,29 @@ def normalize_capitalization(text):
     return " ".join(part.capitalize() for part in raw.lower().split())
 
 
+def build_in_clause(field, values):
+    cleaned = [v.replace("'", "''") for v in values if v]
+    if not cleaned:
+        return "1 = 0"
+    quoted = ", ".join(f"'{v}'" for v in cleaned)
+    return f"{field} in ({quoted})"
+
+
+def asset_manager_search(org, token, entity_name, payload):
+    url = f"https://{API_HOST}/asset-manager/api/asset-manager/{entity_name}/search"
+    r = requests.post(
+        url,
+        json=payload,
+        headers=manhattan_headers(org, token),
+        timeout=45,
+        verify=False,
+    )
+    if not r.ok:
+        raise Exception(f"{entity_name} search failed: HTTP {r.status_code}: {r.text[:400]}")
+    data = r.json().get("data", []) or []
+    return data if isinstance(data, list) else []
+
+
 @app.route("/api/app_opened", methods=["POST"])
 def app_opened():
     send_ha_message({"event": "dispatch_request_app_opened"})
@@ -162,7 +185,7 @@ def facilities():
                 "Description": desc,
                 "City": city,
                 "State": state,
-                "Display": f"{fid}: {desc}: {city}" if desc else (f"{fid}: {city}" if city else fid),
+                "Display": f"{fid}: {desc}" if desc else fid,
                 "FacilityTypeTerminal": bool(f.get("FacilityTypeTerminal")),
                 "IsActive": bool(f.get("IsActive")) if f.get("IsActive") is not None else None,
             }
@@ -174,9 +197,8 @@ def facilities():
                 continue
             tdesc = (t.get("Description") or "").strip()
             taddr = t.get("FacilityAddress") or {}
-            tcity = (taddr.get("City") or "").strip()
-            tdisplay = f"{tid}: {tdesc}: {tcity}" if tdesc else (f"{tid}: {tcity}" if tcity else tid)
-            terminals_out.append({"TerminalId": tid, "Description": tdesc, "City": tcity, "Display": tdisplay})
+            tdisplay = f"{tid}: {tdesc}" if tdesc else tid
+            terminals_out.append({"TerminalId": tid, "Description": tdesc, "Display": tdisplay})
 
         facilities_out.sort(key=lambda x: (x.get("FacilityId") or "").lower())
         terminals_out.sort(key=lambda x: (x.get("TerminalId") or "").lower())
@@ -240,6 +262,130 @@ def product_classes():
 
         out.sort(key=lambda x: (x.get("Display") or "").lower())
         return jsonify({"success": True, "productClasses": out})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)})
+
+
+@app.route("/api/terminal_resource_defaults", methods=["POST"])
+def terminal_resource_defaults():
+    org = request.json.get("org", "").strip()
+    token = request.json.get("token", "").strip()
+    terminal_id = request.json.get("terminalId", "").strip()
+
+    if not org or not token or not terminal_id:
+        return jsonify({"success": False, "error": "Missing org/token/terminalId"})
+
+    try:
+        tid_safe = terminal_id.replace("'", "''")
+
+        driver_assets = asset_manager_search(
+            org,
+            token,
+            "driverAsset",
+            {
+                "Query": f"TerminalId = '{tid_safe}' AND TrackAvailability = 'true'",
+                "Size": 1000,
+                "Template": {
+                    "DriverAssetId": None,
+                    "TerminalId": None,
+                    "CarrierId": None,
+                    "DriverTypeId": None,
+                },
+            },
+        )
+        driver_type_ids = sorted({d.get("DriverTypeId") for d in driver_assets if d.get("DriverTypeId")})
+        driver_types = []
+        if driver_type_ids:
+            rows = asset_manager_search(
+                org,
+                token,
+                "driverType",
+                {"Query": build_in_clause("DriverTypeId", list(driver_type_ids)), "Size": len(driver_type_ids)},
+            )
+            for r in rows:
+                dtid = (r.get("DriverTypeId") or "").strip()
+                desc = (r.get("Description") or "").strip()
+                display = normalize_capitalization(desc) if desc else dtid
+                if dtid or display:
+                    driver_types.append({"Id": dtid or display, "Description": desc, "Display": display})
+            driver_types.sort(key=lambda x: (x.get("Display") or "").lower())
+
+        tractor_assets = asset_manager_search(
+            org,
+            token,
+            "tractorAsset",
+            {
+                "Query": f"TerminalId = '{tid_safe}' AND TrackAvailability = 'true'",
+                "Size": 1000,
+                "Template": {
+                    "TractorAssetId": None,
+                    "TerminalId": None,
+                    "CarrierId": None,
+                    "EquipmentTypeId": None,
+                },
+            },
+        )
+        tractor_type_ids = sorted({t.get("EquipmentTypeId") for t in tractor_assets if t.get("EquipmentTypeId")})
+        tractor_types = []
+        if tractor_type_ids:
+            rows = asset_manager_search(
+                org,
+                token,
+                "equipmentType",
+                {"Query": build_in_clause("EquipmentTypeId", list(tractor_type_ids)), "Size": len(tractor_type_ids)},
+            )
+            for r in rows:
+                etid = (r.get("EquipmentTypeId") or "").strip()
+                desc = (r.get("Description") or "").strip()
+                display = normalize_capitalization(desc) if desc else etid
+                if etid or display:
+                    tractor_types.append({"Id": etid or display, "Description": desc, "Display": display})
+            tractor_types.sort(key=lambda x: (x.get("Display") or "").lower())
+
+        trailer_assets = asset_manager_search(
+            org,
+            token,
+            "trailerAsset",
+            {
+                "Query": f"TerminalId = '{tid_safe}' AND TrackAvailability = 'true'",
+                "Size": 1000,
+                "Template": {
+                    "TrailerAssetId": None,
+                    "TerminalId": None,
+                    "CarrierId": None,
+                    "EquipmentTypeId": None,
+                },
+            },
+        )
+        trailer_type_ids = sorted({t.get("EquipmentTypeId") for t in trailer_assets if t.get("EquipmentTypeId")})
+        trailer_types = []
+        if trailer_type_ids:
+            rows = asset_manager_search(
+                org,
+                token,
+                "equipmentType",
+                {"Query": build_in_clause("EquipmentTypeId", list(trailer_type_ids)), "Size": len(trailer_type_ids)},
+            )
+            for r in rows:
+                etid = (r.get("EquipmentTypeId") or "").strip()
+                desc = (r.get("Description") or "").strip()
+                display = normalize_capitalization(desc) if desc else etid
+                if etid or display:
+                    trailer_types.append({"Id": etid or display, "Description": desc, "Display": display})
+            trailer_types.sort(key=lambda x: (x.get("Display") or "").lower())
+
+        return jsonify(
+            {
+                "success": True,
+                "terminalId": terminal_id,
+                "driverTypes": driver_types,
+                "tractorTypes": tractor_types,
+                "trailerTypes": trailer_types,
+                "defaultDriverTypeId": driver_types[0]["Id"] if driver_types else None,
+                "defaultTractorTypeId": tractor_types[0]["Id"] if tractor_types else None,
+                "defaultTrailerTypeId": trailer_types[0]["Id"] if trailer_types else None,
+            }
+        )
     except Exception as e:
         return jsonify({"success": False, "error": str(e)})
 

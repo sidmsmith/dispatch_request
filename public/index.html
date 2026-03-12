@@ -109,16 +109,16 @@
             <select id="terminalSelect" class="form-select"></select>
           </div>
           <div>
-            <label class="form-label fw-semibold">Driver Type (default)</label>
-            <input id="driverType" class="form-control readonly-field" readonly />
+            <label class="form-label fw-semibold">Driver Type</label>
+            <select id="driverType" class="form-select"></select>
           </div>
           <div>
-            <label class="form-label fw-semibold">Tractor Type (default)</label>
-            <input id="tractorType" class="form-control readonly-field" readonly />
+            <label class="form-label fw-semibold">Tractor Type</label>
+            <select id="tractorType" class="form-select"></select>
           </div>
           <div>
-            <label class="form-label fw-semibold">Trailer Type (default)</label>
-            <input id="trailerType" class="form-control readonly-field" readonly />
+            <label class="form-label fw-semibold">Trailer Type</label>
+            <select id="trailerType" class="form-select"></select>
           </div>
         </div>
       </div>
@@ -171,6 +171,12 @@
     let token = null;
     let allFacilities = [];
     let productClassOptions = [];
+    let driverTypeOptions = [];
+    let tractorTypeOptions = [];
+    let trailerTypeOptions = [];
+    let defaultDriverTypeId = '';
+    let defaultTractorTypeId = '';
+    let defaultTrailerTypeId = '';
     let stops = [];
     let facilityOptionsHtml = '';
     let idSeq = 1;
@@ -228,31 +234,66 @@
       document.getElementById('deliveryStart').value = formatDtLocal(deliveryStart);
       document.getElementById('deliveryEnd').value = formatDtLocal(deliveryEnd);
     }
-    function defaultsForTerminal(terminalId) {
-      if ((terminalId || '').includes('DM1')) return { driverType: 'Company Driver', tractorType: 'Day Cab', trailerType: '53FT Dry Van' };
-      return { driverType: 'Company Driver', tractorType: 'Standard Tractor', trailerType: 'Standard Trailer' };
+    function fillTypeSelect(selectId, options, defaultId) {
+      const sel = document.getElementById(selectId);
+      const noneLabel = '-- Select --';
+      sel.innerHTML = `<option value="">${noneLabel}</option>` + options.map(o => {
+        const isDefault = defaultId && o.Id === defaultId;
+        const label = isDefault ? `${o.Display} (default)` : o.Display;
+        return `<option value="${o.Id}">${label}</option>`;
+      }).join('');
+      sel.value = defaultId || '';
     }
-    function setTerminalDefaults() {
+
+    function resetTypeDropdowns() {
+      driverTypeOptions = [];
+      tractorTypeOptions = [];
+      trailerTypeOptions = [];
+      defaultDriverTypeId = '';
+      defaultTractorTypeId = '';
+      defaultTrailerTypeId = '';
+      fillTypeSelect('driverType', driverTypeOptions, defaultDriverTypeId);
+      fillTypeSelect('tractorType', tractorTypeOptions, defaultTractorTypeId);
+      fillTypeSelect('trailerType', trailerTypeOptions, defaultTrailerTypeId);
+    }
+
+    async function loadTerminalResourceDefaults() {
       const terminalId = document.getElementById('terminalSelect').value;
-      const d = defaultsForTerminal(terminalId);
-      document.getElementById('driverType').value = d.driverType;
-      document.getElementById('tractorType').value = d.tractorType;
-      document.getElementById('trailerType').value = d.trailerType;
+      if (!terminalId) {
+        resetTypeDropdowns();
+        validateForm();
+        return;
+      }
+      const org = document.getElementById('orgInput').value.trim();
+      const res = await api('terminal_resource_defaults', { org, token, terminalId });
+      if (!res.success) {
+        setStatus(document.getElementById('submitStatus'), res.error || 'Failed loading terminal type defaults.', 'error');
+        resetTypeDropdowns();
+        validateForm();
+        return;
+      }
+      driverTypeOptions = res.driverTypes || [];
+      tractorTypeOptions = res.tractorTypes || [];
+      trailerTypeOptions = res.trailerTypes || [];
+      defaultDriverTypeId = res.defaultDriverTypeId || '';
+      defaultTractorTypeId = res.defaultTractorTypeId || '';
+      defaultTrailerTypeId = res.defaultTrailerTypeId || '';
+      fillTypeSelect('driverType', driverTypeOptions, defaultDriverTypeId);
+      fillTypeSelect('tractorType', tractorTypeOptions, defaultTractorTypeId);
+      fillTypeSelect('trailerType', trailerTypeOptions, defaultTrailerTypeId);
+      validateForm();
     }
     function facilityLabel(f) {
       const fid = (f.FacilityId || '').trim();
       const desc = (f.Description || '').trim();
-      const city = (f.City || '').trim();
-      if (desc && city) return `${fid}: ${desc}: ${city}`;
       if (desc) return `${fid}: ${desc}`;
-      if (city) return `${fid}: ${city}`;
       return fid;
     }
     function firstProductClassId() {
-      return productClassOptions.length ? productClassOptions[0].ProductClassId : '';
+      return '';
     }
     function productClassOptionsHtml(selectedId) {
-      return productClassOptions
+      return `<option value="">-- Select Product Class --</option>` + productClassOptions
         .map(pc => `<option value="${pc.ProductClassId}" ${pc.ProductClassId === selectedId ? 'selected' : ''}>${pc.Display}</option>`)
         .join('');
     }
@@ -417,8 +458,8 @@
         o.textContent = t.Display || t.TerminalId;
         terminalSel.appendChild(o);
       });
-      if (facRes.terminals?.length) terminalSel.value = facRes.terminals[0].TerminalId;
-      setTerminalDefaults();
+      terminalSel.value = '';
+      resetTypeDropdowns();
       stops = [];
       idSeq = 1;
       addStop();
@@ -444,7 +485,10 @@
     document.getElementById('authBtn').addEventListener('click', authenticate);
     document.getElementById('submitBtn').addEventListener('click', submitRequest);
     document.getElementById('addStopBtn').addEventListener('click', addStop);
-    document.getElementById('terminalSelect').addEventListener('change', () => { setTerminalDefaults(); validateForm(); });
+    document.getElementById('terminalSelect').addEventListener('change', loadTerminalResourceDefaults);
+    document.getElementById('driverType').addEventListener('change', validateForm);
+    document.getElementById('tractorType').addEventListener('change', validateForm);
+    document.getElementById('trailerType').addEventListener('change', validateForm);
     ['pickupStart','pickupEnd','deliveryStart','deliveryEnd'].forEach(id => document.getElementById(id).addEventListener('input', validateForm));
     document.getElementById('orgInput').addEventListener('keydown', (e) => { if (e.key === 'Enter') authenticate(); });
 
