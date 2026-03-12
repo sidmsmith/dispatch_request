@@ -518,11 +518,14 @@
       try {
         const res = await api('submit_request', { org, token, payload });
         if (!res.success) { setStatus(submitStatus, res.error || 'Submit failed.', 'error'); return; }
-        setStatus(submitStatus, res.message || 'Submitted.', 'success');
+        const niceMsg = res.toNumber
+          ? `NextUp TO Number Generated: ${res.toNumber}`
+          : (res.message || 'Submitted.');
+        setStatus(submitStatus, niceMsg, 'success');
       } catch (e) {
         setStatus(submitStatus, 'Submit failed.', 'error');
       } finally {
-        validateForm();
+        document.getElementById('submitBtn').disabled = false;
       }
     }
     async function loadFormData() {

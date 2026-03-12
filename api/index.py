@@ -399,18 +399,60 @@ def submit_request():
     if not org or not token:
         return jsonify({"success": False, "error": "Missing org/token"})
 
-    # Placeholder endpoint: this is where the API chain will be added later.
+    # REQUIRED ENVIRONMENT CONFIG:
+    # This app expects a NextUp counter named TransportationOrderId to exist.
+    # If the counter is missing/not configured in an environment, we stop here
+    # and return a clear message to the UI.
+    nextup_url = (
+        f"https://{API_HOST}/routing/api/nextup/getNextupNumbersByCounterType"
+        "?counterTypeId=TransportationOrderId&count=1"
+    )
+    try:
+        nr = requests.get(
+            nextup_url,
+            headers=manhattan_headers(org, token),
+            timeout=30,
+            verify=False,
+        )
+        if not nr.ok:
+            return jsonify(
+                {
+                    "success": False,
+                    "error": "No NextUp Transportation Order counter is configured in this environment.",
+                }
+            )
+        nbody = nr.json() or {}
+        numbers = nbody.get("data", []) or []
+        to_number = numbers[0] if numbers else None
+        if not to_number:
+            return jsonify(
+                {
+                    "success": False,
+                    "error": "No NextUp Transportation Order counter is configured in this environment.",
+                }
+            )
+    except Exception:
+        return jsonify(
+            {
+                "success": False,
+                "error": "No NextUp Transportation Order counter is configured in this environment.",
+            }
+        )
+
+    # Placeholder for subsequent API chain that will use the generated TO number.
     send_ha_message(
         {
             "event": "dispatch_request_submit",
             "org": org,
+            "to_number": to_number,
             "payload_keys": list(payload.keys()) if isinstance(payload, dict) else [],
         }
     )
     return jsonify(
         {
             "success": True,
-            "message": "Request captured. API chain not implemented yet.",
+            "message": f"Generated Transportation Order Number: {to_number}",
+            "toNumber": to_number,
             "echo": payload,
         }
     )
