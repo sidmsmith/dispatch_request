@@ -616,21 +616,23 @@ def submit_request():
                 "StopActionId": {"StopActionId": "PU"},
                 "FacilityId": origin_facility_id,
                 "StopOrder": [{"OrderId": rec["toNumber"]} for rec in created_stops if rec.get("toNumber")],
-                "PlannedDepartureStartDateTime": pickup_start,
-                "PlannedDepartureEndDateTime": pickup_end,
+                "PlannedArrivalDateTime": pickup_start,
+                "PlannedDepartureDateTime": pickup_end,
             }
         ]
 
         stop_seq = 2
         for grp in destination_groups:
+            planned_arrival = delivery_start or delivery_end
+            planned_departure = delivery_end or delivery_start
             shipment_stops.append(
                 {
                     "StopSequence": stop_seq,
-                    "StopActionId": {"StopActionId": "DO"},
+                    "StopActionId": {"StopActionId": "DL"},
                     "FacilityId": grp["facilityId"],
                     "StopOrder": [{"OrderId": to_id} for to_id in grp["toNumbers"]],
-                    "PlannedArrivalStartDateTime": delivery_start,
-                    "PlannedArrivalEndDateTime": delivery_end,
+                    "PlannedArrivalDateTime": planned_arrival,
+                    "PlannedDepartureDateTime": planned_departure,
                 }
             )
             stop_seq += 1
