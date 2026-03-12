@@ -471,11 +471,16 @@ def submit_request():
                     raise Exception(
                         f"avgWeight must be > 0 for stop {stop_idx + 1}, line {line_idx + 1}"
                     )
+                avg_cube = as_num(line.get("avgCube"))
+                if avg_cube <= 0:
+                    raise Exception(
+                        f"avgCube must be > 0 for stop {stop_idx + 1}, line {line_idx + 1}"
+                    )
 
                 extended_weight = pallets * avg_weight
-                # Temporary default: 60 cuft per pallet.
-                # TODO: replace with product-class specific cube logic/rules.
-                extended_volume = pallets * 60
+                # Cube currently comes from the UI default table per Product Class.
+                # TODO: replace/augment with server-side product-class cube rules.
+                extended_volume = pallets * avg_cube
 
                 lines.append(
                     {

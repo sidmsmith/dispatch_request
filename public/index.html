@@ -212,6 +212,23 @@
       'OB-CHGRO': 1600, 'OB-HBC': 1200, 'PDIFRSH': 1500, 'OB-LDC': 1500, 'UNKNOWN': 1500,
       'PERISHABLE': 1700
     };
+    const PRODUCT_CLASS_CUBE_DEFAULTS_RAW = {
+      '12BR': 55, '12OM': 55, 'ACCSSRY': 70, 'ACID': 45, 'APPAREL': 85,
+      'AUTO': 60, 'BATHBODY': 70, 'CLOTHES': 85, 'CLOTHING': 85, 'COSMETIC': 70,
+      'DRY': 60, 'ELECTRNC': 65, 'ELECTRONICS': 65, 'FLOORLD': 60, 'FMD': 60,
+      'FROZEN': 50, 'GLOVES': 75, 'GROCERY': 55, 'HAZMAT': 50, 'HOMEGOODS': 65,
+      'INB': 60, 'KITCHEN': 65, 'LIQUOR': 45, 'LNH': 60, 'MEDICAL': 65,
+      'OUT': 60, 'OUTDOOR': 60, 'PALLET': null, 'PC': 60, 'PC01': 60, 'PC1': 60,
+      'PE': 60, 'PHARMA': 65, 'PL01': 60, 'PRODUCE': 55, 'REEFER': 55,
+      'REFRIGERATED': 55, 'RUGS': 70, 'SHOES': 70, 'SURGICAL': 65, 'TOYS': 80,
+      'WINE': 45, 'BATTERIES': 50, 'MOTOR OIL': 45, 'TIRES': 60, 'SPARK PLUGS': 55,
+      'CHEESE': 50, 'PIZZA SAUCE': 45, 'FLOUR': 60, 'CUPS 16OZ': 80, 'GENERATORS': 55,
+      'ALUMINUMCOIL': 40, 'BOXES': 90, 'CHEMICAL': 45, 'COOLER': 55, 'FS': 55,
+      'AMBIENT': 60, 'FISH': 50, 'MERCH': 65, 'OF': 60, 'MEDICAL SUPPLIES': 65,
+      'IB-FRZ': 50, 'IB-REF': 55, 'IB-DRY': 60, 'OB-FRZ': 50, 'OB-PRO': 55,
+      'OB-CHGRO': 55, 'OB-HBC': 70, 'PDIFRSH': 55, 'OB-LDC': 60, 'UNKNOWN': 65,
+      'PERISHABLE': 55
+    };
 
     const THEMES = {
       light: {'--bg-color':'#ffffff','--text-color':'#1f2933','--text-muted':'#616e7c','--card-bg':'#f8fafc','--border-color':'#d9e2ec','--input-bg':'#ffffff','--input-border':'#cbd5e0','--input-focus-bg':'#ffffff','--input-focus-border':'#339af0','--input-focus-shadow':'rgba(51,154,240,0.25)','--primary-color':'#339af0','--primary-hover':'#228be6','--success-color':'#28a745','--danger-color':'#dc3545','--header-text':'#1f2933'},
@@ -290,6 +307,7 @@
           products: (s.products || []).map(p => ({
             productClass: p.productClass || '',
             avgWeight: p.avgWeight ?? '',
+            avgCube: p.avgCube ?? '',
             pallets: p.pallets ?? ''
           }))
         }))
@@ -324,9 +342,15 @@
               ? ss.products.map(p => ({
                   productClass: p.productClass || '',
                   avgWeight: p.avgWeight ?? '',
+                  avgCube: p.avgCube ?? '',
                   pallets: p.pallets ?? ''
                 }))
-              : [{ productClass: firstProductClassId(), avgWeight: defaultAvgWeightForProductClass(firstProductClassId()), pallets: '' }];
+              : [{
+                  productClass: firstProductClassId(),
+                  avgWeight: defaultAvgWeightForProductClass(firstProductClassId()),
+                  avgCube: defaultAvgCubeForProductClass(firstProductClassId()),
+                  pallets: ''
+                }];
             stops.push({
               id: idSeq++,
               sequence: Number(ss.sequence || 0),
@@ -403,13 +427,25 @@
       if (typeof val === 'number' && Number.isFinite(val)) return val;
       return 0;
     }
+    function defaultAvgCubeForProductClass(productClassId) {
+      const key = normalizeProductClassKey(productClassId);
+      if (!key) return 0;
+      const val = PRODUCT_CLASS_CUBE_DEFAULTS_RAW[key];
+      if (typeof val === 'number' && Number.isFinite(val)) return val;
+      return 0;
+    }
     function addStop() {
       const pc = firstProductClassId();
       stops.push({
         id: idSeq++,
         sequence: stops.length + 1,
         deliveryFacilityId: '',
-        products: [{ productClass: pc, avgWeight: defaultAvgWeightForProductClass(pc), pallets: '' }]
+        products: [{
+          productClass: pc,
+          avgWeight: defaultAvgWeightForProductClass(pc),
+          avgCube: defaultAvgCubeForProductClass(pc),
+          pallets: ''
+        }]
       });
       renderStops(); validateForm();
     }
@@ -432,7 +468,12 @@
     function addProductLine(stopId) {
       const s = stops.find(x => x.id === stopId); if (!s) return;
       const pc = firstProductClassId();
-      s.products.push({ productClass: pc, avgWeight: defaultAvgWeightForProductClass(pc), pallets: '' });
+      s.products.push({
+        productClass: pc,
+        avgWeight: defaultAvgWeightForProductClass(pc),
+        avgCube: defaultAvgCubeForProductClass(pc),
+        pallets: ''
+      });
       renderStops(); validateForm();
     }
     function removeProductLine(stopId, idx) {
@@ -461,7 +502,7 @@
           </div>
           <div class="table-responsive">
             <table class="table table-sm mini-grid mb-1">
-              <thead><tr><th style="width:38%;">Product Class</th><th style="width:27%;">Average Weight (lbs)</th><th style="width:25%;">Pallets</th><th style="width:10%;"></th></tr></thead>
+              <thead><tr><th style="width:30%;">Product Class</th><th style="width:20%;">Average Weight (lbs)</th><th style="width:20%;">Average Cube (cu ft)</th><th style="width:20%;">Number of Pallets</th><th style="width:10%;"></th></tr></thead>
               <tbody data-role="products-body"></tbody>
             </table>
           </div>
@@ -495,20 +536,26 @@
           if (p.avgWeight === undefined || p.avgWeight === null || p.avgWeight === '') {
             p.avgWeight = defaultAvgWeightForProductClass(p.productClass);
           }
+          if (p.avgCube === undefined || p.avgCube === null || p.avgCube === '') {
+            p.avgCube = defaultAvgCubeForProductClass(p.productClass);
+          }
           const tr = document.createElement('tr');
           tr.innerHTML = `
             <td><select class="form-select form-select-sm" data-role="pclass">${productClassOptionsHtml(p.productClass)}</select></td>
             <td><input type="number" min="0" step="0.01" class="form-control form-control-sm" data-role="avgWeight" value="${p.avgWeight}" /></td>
+            <td><input type="number" min="0" step="0.01" class="form-control form-control-sm" data-role="avgCube" value="${p.avgCube}" /></td>
             <td><input type="number" min="0" step="0.01" class="form-control form-control-sm" data-role="pallets" value="${p.pallets}" /></td>
             <td><button class="btn btn-outline-danger btn-sm" data-role="remove-line"><i class="fas fa-times"></i></button></td>
           `;
           tr.querySelector('[data-role="pclass"]').addEventListener('change', e => {
             p.productClass = e.target.value;
             p.avgWeight = defaultAvgWeightForProductClass(p.productClass);
+            p.avgCube = defaultAvgCubeForProductClass(p.productClass);
             renderStops();
             validateForm();
           });
           tr.querySelector('[data-role="avgWeight"]').addEventListener('input', e => { p.avgWeight = e.target.value; validateForm(); });
+          tr.querySelector('[data-role="avgCube"]').addEventListener('input', e => { p.avgCube = e.target.value; validateForm(); });
           tr.querySelector('[data-role="pallets"]').addEventListener('input', e => { p.pallets = e.target.value; validateForm(); });
           tr.querySelector('[data-role="remove-line"]').addEventListener('click', () => removeProductLine(stop.id, idx));
           tbody.appendChild(tr);
@@ -538,6 +585,7 @@
         for (const p of s.products) {
           if (!p.productClass) { submitBtn.disabled = true; setStatus(submitStatus, `Stop ${s.sequence}: Product Class is required.`, 'error'); return false; }
           if (p.avgWeight === '' || Number(p.avgWeight) <= 0) { submitBtn.disabled = true; setStatus(submitStatus, `Stop ${s.sequence}: Average Weight must be greater than 0.`, 'error'); return false; }
+          if (p.avgCube === '' || Number(p.avgCube) <= 0) { submitBtn.disabled = true; setStatus(submitStatus, `Stop ${s.sequence}: Average Cube must be greater than 0.`, 'error'); return false; }
           if (p.pallets === '' || Number(p.pallets) < 0) { submitBtn.disabled = true; setStatus(submitStatus, `Stop ${s.sequence}: Pallets must be zero or greater.`, 'error'); return false; }
         }
       }
@@ -575,6 +623,7 @@
           productLines: s.products.map(p => ({
             productClass: p.productClass,
             avgWeight: Number(p.avgWeight),
+            avgCube: Number(p.avgCube),
             pallets: Number(p.pallets)
           }))
         }))
