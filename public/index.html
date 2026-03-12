@@ -55,8 +55,8 @@
     .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0.8rem 1rem; }
     .readonly-field { background: color-mix(in srgb, var(--input-bg) 90%, #d1d5db 10%); }
     .field-wrap { position: relative; }
-    .stop-card { border: 1px dashed var(--border-color); border-radius: 10px; padding: 0.7rem; margin-bottom: 0.75rem; }
-    .stop-card.alt { background: color-mix(in srgb, var(--input-bg) 90%, var(--border-color) 10%); }
+    .stop-card { border: 1px dashed #f2b88c; border-radius: 10px; padding: 0.7rem; margin-bottom: 0.75rem; background: #fff1e6; }
+    .stop-card.alt { background: #eaf4ff; border-color: #8ec5ff; }
     .stop-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.5rem; }
     .stop-actions { display: flex; gap: 0.4rem; align-items: center; }
     .drag-handle-btn {
@@ -193,6 +193,8 @@
     let facilityOptionsHtml = '';
     let idSeq = 1;
     let draggingStopId = null;
+    let isRestoringState = false;
+    const FORM_STORAGE_KEY = 'dispatch_request_form_state_v1';
     const PRODUCT_CLASS_WEIGHT_DEFAULTS_RAW = {
       '12BR': 1500, '12OM': 1500, 'ACCSSRY': 1100, 'ACID': 2150, 'APPAREL': 1000,
       'AUTO': 1600, 'BATHBODY': 1150, 'CLOTHES': 1000, 'CLOTHING': 1000, 'COSMETIC': 1150,
@@ -273,6 +275,70 @@
         return `<option value="${o.Id}">${label}</option>`;
       }).join('');
       sel.value = defaultId || '';
+    }
+    function saveFormState() {
+      if (isRestoringState) return;
+      const state = {
+        terminalId: document.getElementById('terminalSelect').value || '',
+        originFacilityId: document.getElementById('originSelect').value || '',
+        driverTypeId: document.getElementById('driverType').value || '',
+        tractorTypeId: document.getElementById('tractorType').value || '',
+        trailerTypeId: document.getElementById('trailerType').value || '',
+        stops: stops.map(s => ({
+          sequence: Number(s.sequence || 0),
+          deliveryFacilityId: s.deliveryFacilityId || '',
+          products: (s.products || []).map(p => ({
+            productClass: p.productClass || '',
+            avgWeight: p.avgWeight ?? '',
+            pallets: p.pallets ?? ''
+          }))
+        }))
+      };
+      localStorage.setItem(FORM_STORAGE_KEY, JSON.stringify(state));
+    }
+    async function restoreFormState() {
+      const raw = localStorage.getItem(FORM_STORAGE_KEY);
+      if (!raw) return;
+      let state = null;
+      try { state = JSON.parse(raw); } catch (_) { return; }
+      if (!state || typeof state !== 'object') return;
+
+      isRestoringState = true;
+      try {
+        const terminalSel = document.getElementById('terminalSelect');
+        const terminalId = state.terminalId || '';
+        if (terminalId) {
+          terminalSel.value = terminalId;
+          await loadTerminalResourceDefaults();
+        }
+        if (state.originFacilityId) document.getElementById('originSelect').value = state.originFacilityId;
+        if (state.driverTypeId) document.getElementById('driverType').value = state.driverTypeId;
+        if (state.tractorTypeId) document.getElementById('tractorType').value = state.tractorTypeId;
+        if (state.trailerTypeId) document.getElementById('trailerType').value = state.trailerTypeId;
+
+        if (Array.isArray(state.stops) && state.stops.length) {
+          stops = [];
+          idSeq = 1;
+          for (const ss of state.stops) {
+            const products = Array.isArray(ss.products) && ss.products.length
+              ? ss.products.map(p => ({
+                  productClass: p.productClass || '',
+                  avgWeight: p.avgWeight ?? '',
+                  pallets: p.pallets ?? ''
+                }))
+              : [{ productClass: firstProductClassId(), avgWeight: defaultAvgWeightForProductClass(firstProductClassId()), pallets: '' }];
+            stops.push({
+              id: idSeq++,
+              sequence: Number(ss.sequence || 0),
+              deliveryFacilityId: ss.deliveryFacilityId || '',
+              products
+            });
+          }
+          renderStops();
+        }
+      } finally {
+        isRestoringState = false;
+      }
     }
 
     function resetTypeDropdowns() {
@@ -460,6 +526,7 @@
     function validateForm() {
       const submitBtn = document.getElementById('submitBtn');
       const submitStatus = document.getElementById('submitStatus');
+      saveFormState();
       const terminal = document.getElementById('terminalSelect').value;
       if (!terminal) { submitBtn.disabled = true; setStatus(submitStatus, 'Terminal is required.', 'error'); return false; }
       const originFacilityId = document.getElementById('originSelect').value;
@@ -573,6 +640,7 @@
       document.getElementById('authSection').style.display = 'none';
       document.getElementById('mainScreen').style.display = 'block';
       await loadFormData();
+      await restoreFormState();
       applyDateDefaults();
       validateForm();
     }
