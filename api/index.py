@@ -522,6 +522,7 @@ def submit_request():
     created_numbers = []
     create_results = []
     to_create_debug = []
+    created_stop_records = []
     for stop_idx, stop in enumerate(form_stops):
         to_number = to_numbers[stop_idx]
         try:
@@ -564,6 +565,13 @@ def submit_request():
             )
             created_numbers.append(to_number)
             create_results.append(create_body)
+            created_stop_records.append(
+                {
+                    "toNumber": to_number,
+                    "stopSequence": stop.get("sequence"),
+                    "destinationFacilityId": (stop.get("deliveryFacilityId") or "").strip(),
+                }
+            )
         except Exception as e:
             to_create_debug.append(create_debug)
             return jsonify(
@@ -574,23 +582,98 @@ def submit_request():
                 }
             )
 
+    def build_shipment_payload_draft(form_payload, created_stops):
+        origin_facility_id = (form_payload.get("originFacilityId") or "").strip()
+        if not origin_facility_id:
+            raise Exception("Origin facility is required to build shipment payload")
+        if not created_stops:
+            raise Exception("No created TOs available to build shipment payload")
+
+        pickup_start = form_payload.get("pickupStart")
+        pickup_end = form_payload.get("pickupEnd")
+        delivery_start = form_payload.get("deliveryStart")
+        delivery_end = form_payload.get("deliveryEnd")
+
+        # Group TOs by destination in first-appearance order.
+        destination_groups = []
+        destination_index = {}
+        for rec in created_stops:
+            dest = rec.get("destinationFacilityId")
+            to_id = rec.get("toNumber")
+            if not dest or not to_id:
+                continue
+            if dest not in destination_index:
+                destination_index[dest] = len(destination_groups)
+                destination_groups.append({"facilityId": dest, "toNumbers": [to_id]})
+            else:
+                destination_groups[destination_index[dest]]["toNumbers"].append(to_id)
+
+        shipment_stops = [
+            {
+                "StopSequence": 1,
+                "StopActionId": {"StopActionId": "PU"},
+                "FacilityId": origin_facility_id,
+                "StopOrder": [{"OrderId": rec["toNumber"]} for rec in created_stops if rec.get("toNumber")],
+                "PlannedDepartureStartDateTime": pickup_start,
+                "PlannedDepartureEndDateTime": pickup_end,
+            }
+        ]
+
+        stop_seq = 2
+        for grp in destination_groups:
+            shipment_stops.append(
+                {
+                    "StopSequence": stop_seq,
+                    "StopActionId": {"StopActionId": "DO"},
+                    "FacilityId": grp["facilityId"],
+                    "StopOrder": [{"OrderId": to_id} for to_id in grp["toNumbers"]],
+                    "PlannedArrivalStartDateTime": delivery_start,
+                    "PlannedArrivalEndDateTime": delivery_end,
+                }
+            )
+            stop_seq += 1
+
+        return {
+            # Intentionally left blank until Shipment NextUp ID is confirmed.
+            "ShipmentId": None,
+            "ModeId": "TL",
+            "CarrierId": "PFLT",
+            "OrderCreationType": "TransportationOrder",
+            "ExternalShipmentWithTO": True,
+            "ExternallyPlanned": True,
+            "PlanningStatusId": {"PlanningStatusId": "0500"},
+            "Actions": {"Order": "RESET", "Stop": "RESET"},
+            "Stop": shipment_stops,
+        }
+
+    try:
+        shipment_payload_draft = build_shipment_payload_draft(payload, created_stop_records)
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e), "toCreateDebug": to_create_debug})
+
     send_ha_message(
         {
             "event": "dispatch_request_submit",
             "org": org,
             "to_numbers": created_numbers,
+            "shipment_draft_ready": True,
             "payload_keys": list(payload.keys()) if isinstance(payload, dict) else [],
         }
     )
     return jsonify(
         {
             "success": True,
-            "message": f"Transportation Orders created successfully: {', '.join(created_numbers)}",
+            "message": (
+                f"Transportation Orders created successfully: {', '.join(created_numbers)}. "
+                "Shipment payload draft prepared (shipment create call not enabled yet)."
+            ),
             "toNumber": created_numbers[0] if created_numbers else None,
             "toNumbers": created_numbers,
             "createResult": create_results[0] if create_results else {},
             "createResults": create_results,
             "toCreateDebug": to_create_debug,
+            "shipmentCreateEnabled": False,
+            "shipmentPayloadDraft": shipment_payload_draft,
             "echo": payload,
         }
     )

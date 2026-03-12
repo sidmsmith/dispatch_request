@@ -676,6 +676,11 @@
             console.groupEnd();
           });
         }
+        if (res && res.shipmentPayloadDraft) {
+          console.groupCollapsed('[Dispatch Request] Shipment Payload Draft (not submitted)');
+          console.log('POST /shipment/api/shipment/shipment/importShipmentWithOrders payload:', res.shipmentPayloadDraft);
+          console.groupEnd();
+        }
         if (!res.success) { setStatus(submitStatus, res.error || 'Submit failed.', 'error'); return; }
         const niceMsg = res.message
           || (Array.isArray(res.toNumbers) && res.toNumbers.length
