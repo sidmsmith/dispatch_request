@@ -823,21 +823,41 @@ def submit_request():
             )
 
         data = trip_body.get("data") if isinstance(trip_body, dict) else None
+        # Handle both known response shapes:
+        # 1) data.ShipmentPlanningAttributes.TripId
+        # 2) data.TripId = ["TRIP..."] (or string)
         if isinstance(data, list):
             first = data[0] if data else {}
             if isinstance(first, dict):
-                trip_id = ((first.get("ShipmentPlanningAttributes") or {}).get("TripId"))
+                spa_trip = ((first.get("ShipmentPlanningAttributes") or {}).get("TripId"))
+                if isinstance(spa_trip, str) and spa_trip.strip():
+                    trip_id = spa_trip.strip()
+                elif isinstance(spa_trip, list) and spa_trip:
+                    trip_id = str(spa_trip[0]).strip()
+                if not trip_id:
+                    direct_trip = first.get("TripId")
+                    if isinstance(direct_trip, str) and direct_trip.strip():
+                        trip_id = direct_trip.strip()
+                    elif isinstance(direct_trip, list) and direct_trip:
+                        trip_id = str(direct_trip[0]).strip()
         elif isinstance(data, dict):
-            trip_id = ((data.get("ShipmentPlanningAttributes") or {}).get("TripId"))
+            spa_trip = ((data.get("ShipmentPlanningAttributes") or {}).get("TripId"))
+            if isinstance(spa_trip, str) and spa_trip.strip():
+                trip_id = spa_trip.strip()
+            elif isinstance(spa_trip, list) and spa_trip:
+                trip_id = str(spa_trip[0]).strip()
+            if not trip_id:
+                direct_trip = data.get("TripId")
+                if isinstance(direct_trip, str) and direct_trip.strip():
+                    trip_id = direct_trip.strip()
+                elif isinstance(direct_trip, list) and direct_trip:
+                    trip_id = str(direct_trip[0]).strip()
 
         if not trip_id:
             return jsonify(
                 {
                     "success": False,
-                    "error": (
-                        "TripId not found in createTripFromShipments response "
-                        "(expected data.ShipmentPlanningAttributes.TripId)"
-                    ),
+                    "error": "TripId not found in createTripFromShipments response",
                     "toNumbers": created_numbers,
                     "shipmentId": shipment_id,
                     "toCreateDebug": to_create_debug,
