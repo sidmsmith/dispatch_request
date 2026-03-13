@@ -299,6 +299,25 @@
     let draggingStopId = null;
     let isRestoringState = false;
     let isBootstrappingForm = false;
+    const REGION_CODE_TO_NAME = {
+      AL: 'Alabama', AK: 'Alaska', AZ: 'Arizona', AR: 'Arkansas', CA: 'California', CO: 'Colorado',
+      CT: 'Connecticut', DE: 'Delaware', FL: 'Florida', GA: 'Georgia', HI: 'Hawaii', ID: 'Idaho',
+      IL: 'Illinois', IN: 'Indiana', IA: 'Iowa', KS: 'Kansas', KY: 'Kentucky', LA: 'Louisiana',
+      ME: 'Maine', MD: 'Maryland', MA: 'Massachusetts', MI: 'Michigan', MN: 'Minnesota',
+      MS: 'Mississippi', MO: 'Missouri', MT: 'Montana', NE: 'Nebraska', NV: 'Nevada',
+      NH: 'New Hampshire', NJ: 'New Jersey', NM: 'New Mexico', NY: 'New York', NC: 'North Carolina',
+      ND: 'North Dakota', OH: 'Ohio', OK: 'Oklahoma', OR: 'Oregon', PA: 'Pennsylvania',
+      RI: 'Rhode Island', SC: 'South Carolina', SD: 'South Dakota', TN: 'Tennessee', TX: 'Texas',
+      UT: 'Utah', VT: 'Vermont', VA: 'Virginia', WA: 'Washington', WV: 'West Virginia',
+      WI: 'Wisconsin', WY: 'Wyoming', DC: 'District of Columbia',
+      AB: 'Alberta', BC: 'British Columbia', MB: 'Manitoba', NB: 'New Brunswick',
+      NL: 'Newfoundland and Labrador', NS: 'Nova Scotia', NT: 'Northwest Territories',
+      NU: 'Nunavut', ON: 'Ontario', PE: 'Prince Edward Island', QC: 'Quebec',
+      SK: 'Saskatchewan', YT: 'Yukon'
+    };
+    const REGION_NAME_TO_CODE = Object.fromEntries(
+      Object.entries(REGION_CODE_TO_NAME).map(([code, name]) => [name.toLowerCase(), code.toLowerCase()])
+    );
     const FORM_STORAGE_KEY = 'dispatch_request_form_state_v1';
     const RECENT_TERMINAL_KEY = 'dispatch_request_recent_terminal_ids_v1';
     const RECENT_ORIGIN_FACILITY_KEY = 'dispatch_request_recent_origin_facility_ids_v1';
@@ -466,20 +485,47 @@
       return allFacilities.find(f => (f.FacilityId || '') === facilityId) || null;
     }
     function facilitySearchText(f) {
+      const rawState = (f.State || '').toString().trim();
+      const upperState = rawState.toUpperCase();
+      const lowerState = rawState.toLowerCase();
+      const stateName = REGION_CODE_TO_NAME[upperState] || '';
+      const stateCode = REGION_NAME_TO_CODE[lowerState] || '';
       return [
         f.FacilityId,
         f.FacilityName,
         f.Description,
         f.City,
         f.State,
+        stateName,
+        stateCode,
         f.PostalCode,
         f.Country
       ].map(v => (v || '').toString().trim().toLowerCase()).join(' ');
     }
+    function expandRegionSearchTerms(q) {
+      const terms = new Set();
+      const base = (q || '').toLowerCase().trim();
+      if (!base) return terms;
+      terms.add(base);
+      const compact = base.replace(/\./g, '').trim();
+      if (compact) terms.add(compact);
+      const fromCode = REGION_CODE_TO_NAME[compact.toUpperCase()];
+      if (fromCode) terms.add(fromCode.toLowerCase());
+      const fromName = REGION_NAME_TO_CODE[compact];
+      if (fromName) terms.add(fromName);
+      return terms;
+    }
     function filterFacilitiesByTerm(term) {
       const q = (term || '').toString().trim().toLowerCase();
       if (!q) return allFacilities.slice();
-      return allFacilities.filter(f => facilitySearchText(f).includes(q));
+      const expanded = expandRegionSearchTerms(q);
+      return allFacilities.filter(f => {
+        const text = facilitySearchText(f);
+        for (const token of expanded) {
+          if (token && text.includes(token)) return true;
+        }
+        return false;
+      });
     }
     function setResultCount(el, count) {
       if (!el) return;
