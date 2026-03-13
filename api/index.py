@@ -1,5 +1,6 @@
 from flask import Flask, request, jsonify, send_from_directory
 import os
+import time
 from datetime import datetime
 import requests
 from requests.auth import HTTPBasicAuth
@@ -775,54 +776,13 @@ def submit_request():
     trip_create_url = f"https://{API_HOST}/shipment/api/shipment/createTripFromShipments"
     trip_create_payload = [{"TripId": None, "ShipmentId": shipment_id, "DispatchFlow": True}]
     trip_create_debug["requestPayload"] = trip_create_payload
+    trip_create_debug["attempts"] = []
+    trip_create_debug["shipmentLookupChecks"] = []
     trip_id = None
-    try:
-        tr = requests.post(
-            trip_create_url,
-            json=trip_create_payload,
-            headers=manhattan_headers(org, token),
-            timeout=45,
-            verify=False,
-        )
-        trip_create_debug["responseStatus"] = tr.status_code
-        trip_create_debug["responseText"] = tr.text
-        try:
-            trip_body = tr.json() if tr.text else {}
-        except Exception:
-            trip_body = None
-        trip_create_debug["responseJson"] = trip_body
-        if not tr.ok:
-            return jsonify(
-                {
-                    "success": False,
-                    "error": f"Create Trip failed: HTTP {tr.status_code}",
-                    "toNumbers": created_numbers,
-                    "shipmentId": shipment_id,
-                    "toCreateDebug": to_create_debug,
-                    "shipmentNextupDebug": shipment_nextup_debug,
-                    "shipmentCreateDebug": shipment_create_debug,
-                    "tripCreateDebug": trip_create_debug,
-                }
-            )
 
-        if isinstance(trip_body, dict) and not trip_body.get("success", True):
-            return jsonify(
-                {
-                    "success": False,
-                    "error": (
-                        "Create Trip failed: "
-                        f"{trip_body.get('messageKey') or trip_body.get('message') or 'Unknown error'}"
-                    ),
-                    "toNumbers": created_numbers,
-                    "shipmentId": shipment_id,
-                    "toCreateDebug": to_create_debug,
-                    "shipmentNextupDebug": shipment_nextup_debug,
-                    "shipmentCreateDebug": shipment_create_debug,
-                    "tripCreateDebug": trip_create_debug,
-                }
-            )
-
-        data = trip_body.get("data") if isinstance(trip_body, dict) else None
+    def extract_trip_id_from_trip_create_body(body):
+        extracted = None
+        data = body.get("data") if isinstance(body, dict) else None
         # Handle both known response shapes:
         # 1) data.ShipmentPlanningAttributes.TripId
         # 2) data.TripId = ["TRIP..."] (or string)
@@ -831,46 +791,135 @@ def submit_request():
             if isinstance(first, dict):
                 spa_trip = ((first.get("ShipmentPlanningAttributes") or {}).get("TripId"))
                 if isinstance(spa_trip, str) and spa_trip.strip():
-                    trip_id = spa_trip.strip()
+                    extracted = spa_trip.strip()
                 elif isinstance(spa_trip, list) and spa_trip:
-                    trip_id = str(spa_trip[0]).strip()
-                if not trip_id:
+                    extracted = str(spa_trip[0]).strip()
+                if not extracted:
                     direct_trip = first.get("TripId")
                     if isinstance(direct_trip, str) and direct_trip.strip():
-                        trip_id = direct_trip.strip()
+                        extracted = direct_trip.strip()
                     elif isinstance(direct_trip, list) and direct_trip:
-                        trip_id = str(direct_trip[0]).strip()
+                        extracted = str(direct_trip[0]).strip()
         elif isinstance(data, dict):
             spa_trip = ((data.get("ShipmentPlanningAttributes") or {}).get("TripId"))
             if isinstance(spa_trip, str) and spa_trip.strip():
-                trip_id = spa_trip.strip()
+                extracted = spa_trip.strip()
             elif isinstance(spa_trip, list) and spa_trip:
-                trip_id = str(spa_trip[0]).strip()
-            if not trip_id:
+                extracted = str(spa_trip[0]).strip()
+            if not extracted:
                 direct_trip = data.get("TripId")
                 if isinstance(direct_trip, str) and direct_trip.strip():
-                    trip_id = direct_trip.strip()
+                    extracted = direct_trip.strip()
                 elif isinstance(direct_trip, list) and direct_trip:
-                    trip_id = str(direct_trip[0]).strip()
+                    extracted = str(direct_trip[0]).strip()
+        return extracted
 
-        if not trip_id:
-            return jsonify(
-                {
-                    "success": False,
-                    "error": "TripId not found in createTripFromShipments response",
-                    "toNumbers": created_numbers,
-                    "shipmentId": shipment_id,
-                    "toCreateDebug": to_create_debug,
-                    "shipmentNextupDebug": shipment_nextup_debug,
-                    "shipmentCreateDebug": shipment_create_debug,
-                    "tripCreateDebug": trip_create_debug,
-                }
+    def lookup_trip_id_from_shipment(shipment_id_to_check):
+        lookup_url = f"https://{API_HOST}/shipment/api/shipment/shipment/search"
+        lookup_payload = {
+            "Query": f"ShipmentId = '{shipment_id_to_check}'",
+            "Size": 1,
+            "Template": {
+                "ShipmentId": None,
+                "ShipmentPlanningAttributes": {"TripId": None},
+            },
+        }
+        debug_item = {"requestPayload": lookup_payload}
+        try:
+            lr = requests.post(
+                lookup_url,
+                json=lookup_payload,
+                headers=manhattan_headers(org, token),
+                timeout=30,
+                verify=False,
             )
-    except Exception as e:
+            debug_item["responseStatus"] = lr.status_code
+            debug_item["responseText"] = lr.text
+            try:
+                lookup_body = lr.json() if lr.text else {}
+            except Exception:
+                lookup_body = None
+            debug_item["responseJson"] = lookup_body
+            if not lr.ok or not isinstance(lookup_body, dict) or not lookup_body.get("success", True):
+                return None, debug_item
+            rows = lookup_body.get("data", []) or []
+            first = rows[0] if isinstance(rows, list) and rows else {}
+            spa = first.get("ShipmentPlanningAttributes") if isinstance(first, dict) else {}
+            found = (spa or {}).get("TripId") if isinstance(spa, dict) else None
+            if isinstance(found, list) and found:
+                found = str(found[0]).strip()
+            elif isinstance(found, str):
+                found = found.strip()
+            else:
+                found = None
+            return found, debug_item
+        except Exception as ex:
+            debug_item["exception"] = str(ex)
+            return None, debug_item
+
+    last_trip_http_status = None
+    last_trip_response_body = None
+    for attempt in range(3):
+        try:
+            tr = requests.post(
+                trip_create_url,
+                json=trip_create_payload,
+                headers=manhattan_headers(org, token),
+                timeout=45,
+                verify=False,
+            )
+            last_trip_http_status = tr.status_code
+            attempt_item = {"attempt": attempt + 1, "responseStatus": tr.status_code, "responseText": tr.text}
+            try:
+                trip_body = tr.json() if tr.text else {}
+            except Exception:
+                trip_body = None
+            attempt_item["responseJson"] = trip_body
+            trip_create_debug["attempts"].append(attempt_item)
+            last_trip_response_body = trip_body
+
+            if tr.ok and isinstance(trip_body, dict) and trip_body.get("success", True):
+                trip_id = extract_trip_id_from_trip_create_body(trip_body)
+                if trip_id:
+                    break
+            # Fallback check: if API response failed or was missing TripId, see whether shipment now has TripId.
+            found_trip, lookup_debug = lookup_trip_id_from_shipment(shipment_id)
+            lookup_debug["attemptAfterTripCreate"] = attempt + 1
+            trip_create_debug["shipmentLookupChecks"].append(lookup_debug)
+            if found_trip:
+                trip_id = found_trip
+                break
+
+            if attempt < 2:
+                time.sleep(1.0)
+        except Exception as e:
+            trip_create_debug["attempts"].append({"attempt": attempt + 1, "exception": str(e)})
+            found_trip, lookup_debug = lookup_trip_id_from_shipment(shipment_id)
+            lookup_debug["attemptAfterTripCreate"] = attempt + 1
+            trip_create_debug["shipmentLookupChecks"].append(lookup_debug)
+            if found_trip:
+                trip_id = found_trip
+                break
+            if attempt < 2:
+                time.sleep(1.0)
+
+    if not trip_id:
+        if (
+            isinstance(last_trip_response_body, dict)
+            and not last_trip_response_body.get("success", True)
+        ):
+            error_msg = (
+                "Create Trip failed: "
+                f"{last_trip_response_body.get('messageKey') or last_trip_response_body.get('message') or 'Unknown error'}"
+            )
+        elif last_trip_http_status:
+            error_msg = f"Create Trip failed: HTTP {last_trip_http_status}"
+        else:
+            error_msg = "TripId not found in createTripFromShipments response"
         return jsonify(
             {
                 "success": False,
-                "error": f"Create Trip failed: {e}",
+                "error": error_msg,
                 "toNumbers": created_numbers,
                 "shipmentId": shipment_id,
                 "toCreateDebug": to_create_debug,
