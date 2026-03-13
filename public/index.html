@@ -802,7 +802,6 @@
     function validateForm() {
       const submitBtn = document.getElementById('submitBtn');
       const submitStatus = document.getElementById('submitStatus');
-      saveFormState();
       const terminal = document.getElementById('terminalSelect').value;
       if (!terminal) { submitBtn.disabled = true; setStatus(submitStatus, 'Terminal is required.', 'error'); return false; }
       const originFacilityId = document.getElementById('originSelect').value;
@@ -830,6 +829,7 @@
     }
     async function submitRequest() {
       if (!validateForm()) return;
+      saveFormState();
       const submitBtn = document.getElementById('submitBtn');
       const submitStatus = document.getElementById('submitStatus');
       const org = document.getElementById('orgInput').value.trim();
