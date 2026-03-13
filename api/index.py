@@ -652,6 +652,7 @@ def submit_request():
 
     shipment_nextup_debug = {}
     shipment_create_debug = {}
+    trip_create_debug = {}
     shipment_id = None
     shipment_nextup_url = (
         f"https://{API_HOST}/shipment/api/nextup/getNextupNumbersByCounterType"
@@ -746,6 +747,7 @@ def submit_request():
                     "toCreateDebug": to_create_debug,
                     "shipmentNextupDebug": shipment_nextup_debug,
                     "shipmentCreateDebug": shipment_create_debug,
+                    "tripCreateDebug": trip_create_debug,
                 }
             )
     except Exception as e:
@@ -756,6 +758,88 @@ def submit_request():
                 "toCreateDebug": to_create_debug,
                 "shipmentNextupDebug": shipment_nextup_debug,
                 "shipmentCreateDebug": shipment_create_debug,
+                "tripCreateDebug": trip_create_debug,
+            }
+        )
+
+    # Create Trip from the new Shipment (no Trip NextUp required).
+    trip_create_url = f"https://{API_HOST}/shipment/api/shipment/createTripFromShipments"
+    trip_create_payload = [{"TripId": None, "ShipmentId": shipment_id, "DispatchFlow": True}]
+    trip_create_debug["requestPayload"] = trip_create_payload
+    trip_id = None
+    try:
+        tr = requests.post(
+            trip_create_url,
+            json=trip_create_payload,
+            headers=manhattan_headers(org, token),
+            timeout=45,
+            verify=False,
+        )
+        trip_create_debug["responseStatus"] = tr.status_code
+        trip_create_debug["responseText"] = tr.text
+        try:
+            trip_body = tr.json() if tr.text else {}
+        except Exception:
+            trip_body = None
+        trip_create_debug["responseJson"] = trip_body
+        if not tr.ok:
+            return jsonify(
+                {
+                    "success": False,
+                    "error": f"Create Trip failed: HTTP {tr.status_code}",
+                    "toCreateDebug": to_create_debug,
+                    "shipmentNextupDebug": shipment_nextup_debug,
+                    "shipmentCreateDebug": shipment_create_debug,
+                    "tripCreateDebug": trip_create_debug,
+                }
+            )
+
+        if isinstance(trip_body, dict) and not trip_body.get("success", True):
+            return jsonify(
+                {
+                    "success": False,
+                    "error": (
+                        "Create Trip failed: "
+                        f"{trip_body.get('messageKey') or trip_body.get('message') or 'Unknown error'}"
+                    ),
+                    "toCreateDebug": to_create_debug,
+                    "shipmentNextupDebug": shipment_nextup_debug,
+                    "shipmentCreateDebug": shipment_create_debug,
+                    "tripCreateDebug": trip_create_debug,
+                }
+            )
+
+        data = trip_body.get("data") if isinstance(trip_body, dict) else None
+        if isinstance(data, list):
+            first = data[0] if data else {}
+            if isinstance(first, dict):
+                trip_id = ((first.get("ShipmentPlanningAttributes") or {}).get("TripId"))
+        elif isinstance(data, dict):
+            trip_id = ((data.get("ShipmentPlanningAttributes") or {}).get("TripId"))
+
+        if not trip_id:
+            return jsonify(
+                {
+                    "success": False,
+                    "error": (
+                        "TripId not found in createTripFromShipments response "
+                        "(expected data.ShipmentPlanningAttributes.TripId)"
+                    ),
+                    "toCreateDebug": to_create_debug,
+                    "shipmentNextupDebug": shipment_nextup_debug,
+                    "shipmentCreateDebug": shipment_create_debug,
+                    "tripCreateDebug": trip_create_debug,
+                }
+            )
+    except Exception as e:
+        return jsonify(
+            {
+                "success": False,
+                "error": f"Create Trip failed: {e}",
+                "toCreateDebug": to_create_debug,
+                "shipmentNextupDebug": shipment_nextup_debug,
+                "shipmentCreateDebug": shipment_create_debug,
+                "tripCreateDebug": trip_create_debug,
             }
         )
 
@@ -765,6 +849,7 @@ def submit_request():
             "org": org,
             "to_numbers": created_numbers,
             "shipment_id": shipment_id,
+            "trip_id": trip_id,
             "payload_keys": list(payload.keys()) if isinstance(payload, dict) else [],
         }
     )
@@ -773,7 +858,8 @@ def submit_request():
             "success": True,
             "message": (
                 f"Transportation Orders created successfully: {', '.join(created_numbers)}. "
-                f"Shipment created successfully: {shipment_id}"
+                f"Shipment created successfully: {shipment_id}. "
+                f"Trip created successfully: {trip_id}"
             ),
             "toNumber": created_numbers[0] if created_numbers else None,
             "toNumbers": created_numbers,
@@ -782,8 +868,10 @@ def submit_request():
             "toCreateDebug": to_create_debug,
             "shipmentCreateEnabled": True,
             "shipmentId": shipment_id,
+            "tripId": trip_id,
             "shipmentNextupDebug": shipment_nextup_debug,
             "shipmentCreateDebug": shipment_create_debug,
+            "tripCreateDebug": trip_create_debug,
             "echo": payload,
         }
     )
