@@ -417,20 +417,6 @@
       recentOriginFacilityIds = readRecentFacilityList(RECENT_ORIGIN_FACILITY_KEY);
       recentDeliveryFacilityIds = readRecentFacilityList(RECENT_DELIVERY_FACILITY_KEY);
     }
-    function prependRecent(list, facilityId) {
-      const id = (facilityId || '').trim();
-      if (!id) return list;
-      return [id, ...list.filter(x => x !== id)].slice(0, 3);
-    }
-    function syncRecentFacilityIdsFromSelections() {
-      const originId = (document.getElementById('originSelect')?.value || '').trim();
-      if (originId) recentOriginFacilityIds = prependRecent(recentOriginFacilityIds, originId);
-      stops.forEach(s => {
-        const deliveryId = (s.deliveryFacilityId || '').trim();
-        if (deliveryId) recentDeliveryFacilityIds = prependRecent(recentDeliveryFacilityIds, deliveryId);
-      });
-      saveRecentFacilityIds();
-    }
     function saveRecentFacilityIds() {
       localStorage.setItem(RECENT_ORIGIN_FACILITY_KEY, JSON.stringify(recentOriginFacilityIds.slice(0, 3)));
       localStorage.setItem(RECENT_DELIVERY_FACILITY_KEY, JSON.stringify(recentDeliveryFacilityIds.slice(0, 3)));
@@ -516,7 +502,6 @@
         originSelect.innerHTML = buildFacilityOptionsHtml(rows, id);
         originSelect.value = id;
         setResultCount(document.getElementById('originResultCount'), rows.length);
-        addRecentFacilityId(id, 'origin');
         validateForm();
       }, document.getElementById('originSelect')?.value || '', recentOriginFacilityIds);
 
@@ -535,7 +520,6 @@
           facilitySelect.value = id;
           setResultCount(resultCount, rows.length);
           stop.deliveryFacilityId = id;
-          addRecentFacilityId(id, 'delivery');
           validateForm();
         }, stop.deliveryFacilityId || '', recentDeliveryFacilityIds);
       });
@@ -845,7 +829,6 @@
         facilitySearchInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); applyStopFacilitySearch(); } });
         facilitySelect.addEventListener('change', () => {
           stop.deliveryFacilityId = facilitySelect.value;
-          addRecentFacilityId(stop.deliveryFacilityId, 'delivery');
           validateForm();
         });
         renderRecentFacilityButtons(card.querySelector('[data-role="recent-facilities"]'), (id) => {
@@ -854,7 +837,6 @@
           facilitySelect.innerHTML = buildFacilityOptionsHtml(rows, stop.deliveryFacilityId || '');
           facilitySelect.value = stop.deliveryFacilityId || '';
           setResultCount(facilityResultCount, rows.length);
-          addRecentFacilityId(stop.deliveryFacilityId, 'delivery');
           validateForm();
         }, stop.deliveryFacilityId || '', recentDeliveryFacilityIds);
         applyStopFacilitySearch();
@@ -1006,7 +988,6 @@
         const originSelect = document.getElementById('originSelect');
         originSelect.innerHTML = facilityOptionsHtml;
         originSelect.addEventListener('change', () => {
-          addRecentFacilityId(originSelect.value, 'origin');
           validateForm();
         });
         const originSearchInput = document.getElementById('originFacilitySearch');
@@ -1038,7 +1019,6 @@
         stops = [];
         idSeq = 1;
         addStop();
-        syncRecentFacilityIdsFromSelections();
         refreshRecentFacilityUi();
         setStatus(submitStatus, 'Terminals/facilities/product classes loaded.', 'success');
         return true;
@@ -1059,7 +1039,6 @@
       document.getElementById('mainScreen').style.display = 'block';
       await loadFormData();
       await restoreFormState();
-      syncRecentFacilityIdsFromSelections();
       refreshRecentFacilityUi();
       applyDateDefaults();
       validateForm();
