@@ -55,6 +55,8 @@
     .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0.8rem 1rem; }
     .facility-picker-row { display: grid; grid-template-columns: minmax(240px, 50%) minmax(260px, 50%); gap: 0.45rem; align-items: start; }
     .facility-col, .facility-search-col { display: flex; flex-direction: column; gap: 0.2rem; }
+    .facility-label-row { display: flex; align-items: center; gap: 0.4rem; flex-wrap: wrap; min-height: 1.3rem; }
+    .facility-label-row .form-label { margin: 0; }
     .facility-col .form-label, .facility-search-col .form-label { margin: 0; line-height: 1.15; }
     .facility-search-wrap { position: relative; width: 100%; }
     .facility-search-input { padding-right: 2.2rem; }
@@ -72,7 +74,7 @@
       cursor: pointer;
     }
     .facility-search-btn:hover { background: color-mix(in srgb, var(--primary-color) 18%, transparent); color: var(--primary-color); }
-    .recent-facilities { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-top: 0.45rem; }
+    .recent-facilities { display: flex; flex-wrap: wrap; gap: 0.35rem; }
     .recent-facility-chip {
       border: 1px solid var(--input-border);
       background: color-mix(in srgb, var(--input-bg) 85%, #dbeafe 15%);
@@ -201,7 +203,10 @@
         <div class="field-wrap">
           <div class="facility-picker-row">
             <div class="facility-col">
-              <label class="form-label fw-semibold">Origin Facility <span class="text-danger">*</span></label>
+              <div class="facility-label-row">
+                <label class="form-label fw-semibold">Origin Facility <span class="text-danger">*</span></label>
+                <div id="originRecentFacilities" class="recent-facilities hidden"></div>
+              </div>
               <select id="originSelect" class="form-select"></select>
             </div>
             <div class="facility-search-col">
@@ -212,7 +217,6 @@
               </div>
             </div>
           </div>
-          <div id="originRecentFacilities" class="recent-facilities hidden"></div>
           <div id="originResultCount" class="muted-note">Results: 0</div>
         </div>
       </div>
@@ -269,8 +273,10 @@
     let isRestoringState = false;
     let isBootstrappingForm = false;
     const FORM_STORAGE_KEY = 'dispatch_request_form_state_v1';
-    const RECENT_FACILITY_KEY = 'dispatch_request_recent_facility_ids_v1';
-    let recentFacilityIds = [];
+    const RECENT_ORIGIN_FACILITY_KEY = 'dispatch_request_recent_origin_facility_ids_v1';
+    const RECENT_DELIVERY_FACILITY_KEY = 'dispatch_request_recent_delivery_facility_ids_v1';
+    let recentOriginFacilityIds = [];
+    let recentDeliveryFacilityIds = [];
     const PRODUCT_CLASS_WEIGHT_DEFAULTS_RAW = {
       '12BR': 1500, '12OM': 1500, 'ACCSSRY': 1100, 'ACID': 2150, 'APPAREL': 1000,
       'AUTO': 1600, 'BATHBODY': 1150, 'CLOTHES': 1000, 'CLOTHING': 1000, 'COSMETIC': 1150,
@@ -369,29 +375,34 @@
       }).join('');
       sel.value = defaultId || '';
     }
-    function loadRecentFacilityIds() {
+    function readRecentFacilityList(storageKey) {
       try {
-        const raw = localStorage.getItem(RECENT_FACILITY_KEY);
+        const raw = localStorage.getItem(storageKey);
         const parsed = raw ? JSON.parse(raw) : [];
-        if (Array.isArray(parsed)) {
-          recentFacilityIds = parsed
-            .map(v => (v || '').toString().trim())
-            .filter(Boolean)
-            .slice(0, 3);
-        } else {
-          recentFacilityIds = [];
-        }
+        if (!Array.isArray(parsed)) return [];
+        return parsed.map(v => (v || '').toString().trim()).filter(Boolean).slice(0, 3);
       } catch (_) {
-        recentFacilityIds = [];
+        return [];
       }
     }
-    function saveRecentFacilityIds() {
-      localStorage.setItem(RECENT_FACILITY_KEY, JSON.stringify(recentFacilityIds.slice(0, 3)));
+    function loadRecentFacilityIds() {
+      recentOriginFacilityIds = readRecentFacilityList(RECENT_ORIGIN_FACILITY_KEY);
+      recentDeliveryFacilityIds = readRecentFacilityList(RECENT_DELIVERY_FACILITY_KEY);
     }
-    function addRecentFacilityId(facilityId) {
+    function saveRecentFacilityIds() {
+      localStorage.setItem(RECENT_ORIGIN_FACILITY_KEY, JSON.stringify(recentOriginFacilityIds.slice(0, 3)));
+      localStorage.setItem(RECENT_DELIVERY_FACILITY_KEY, JSON.stringify(recentDeliveryFacilityIds.slice(0, 3)));
+    }
+    function addRecentFacilityId(facilityId, scope) {
       const id = (facilityId || '').trim();
       if (!id) return;
-      recentFacilityIds = [id, ...recentFacilityIds.filter(x => x !== id)].slice(0, 3);
+      if (scope === 'origin') {
+        recentOriginFacilityIds = [id, ...recentOriginFacilityIds.filter(x => x !== id)].slice(0, 3);
+      } else if (scope === 'delivery') {
+        recentDeliveryFacilityIds = [id, ...recentDeliveryFacilityIds.filter(x => x !== id)].slice(0, 3);
+      } else {
+        return;
+      }
       saveRecentFacilityIds();
       refreshRecentFacilityUi();
     }
@@ -435,10 +446,10 @@
       });
       return opts.join('');
     }
-    function renderRecentFacilityButtons(container, onClick, activeId) {
+    function renderRecentFacilityButtons(container, onClick, activeId, ids) {
       if (!container) return;
       container.innerHTML = '';
-      const validRecent = recentFacilityIds.filter(id => !!getFacilityById(id)).slice(0, 3);
+      const validRecent = (ids || []).filter(id => !!getFacilityById(id)).slice(0, 3);
       if (!validRecent.length) {
         container.classList.add('hidden');
         return;
@@ -463,9 +474,9 @@
         originSelect.innerHTML = buildFacilityOptionsHtml(rows, id);
         originSelect.value = id;
         setResultCount(document.getElementById('originResultCount'), rows.length);
-        addRecentFacilityId(id);
+        addRecentFacilityId(id, 'origin');
         validateForm();
-      }, document.getElementById('originSelect')?.value || '');
+      }, document.getElementById('originSelect')?.value || '', recentOriginFacilityIds);
 
       document.querySelectorAll('.stop-card').forEach(card => {
         const sid = Number(card.dataset.stopId);
@@ -482,9 +493,9 @@
           facilitySelect.value = id;
           setResultCount(resultCount, rows.length);
           stop.deliveryFacilityId = id;
-          addRecentFacilityId(id);
+          addRecentFacilityId(id, 'delivery');
           validateForm();
-        }, stop.deliveryFacilityId || '');
+        }, stop.deliveryFacilityId || '', recentDeliveryFacilityIds);
       });
     }
     function saveFormState() {
@@ -696,7 +707,10 @@
           <div class="mb-2">
             <div class="facility-picker-row">
               <div class="facility-col">
-                <label class="form-label fw-semibold">Delivery Facility <span class="text-danger">*</span></label>
+                <div class="facility-label-row">
+                  <label class="form-label fw-semibold">Delivery Facility <span class="text-danger">*</span></label>
+                  <div class="recent-facilities hidden" data-role="recent-facilities"></div>
+                </div>
                 <select class="form-select" data-role="facility-select">${facilityOptionsHtml}</select>
               </div>
               <div class="facility-search-col">
@@ -707,7 +721,6 @@
                 </div>
               </div>
             </div>
-            <div class="recent-facilities hidden" data-role="recent-facilities"></div>
             <div class="muted-note" data-role="facility-result-count">Results: 0</div>
           </div>
           <div class="table-responsive">
@@ -788,7 +801,7 @@
         facilitySearchInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); applyStopFacilitySearch(); } });
         facilitySelect.addEventListener('change', () => {
           stop.deliveryFacilityId = facilitySelect.value;
-          addRecentFacilityId(stop.deliveryFacilityId);
+          addRecentFacilityId(stop.deliveryFacilityId, 'delivery');
           validateForm();
         });
         renderRecentFacilityButtons(card.querySelector('[data-role="recent-facilities"]'), (id) => {
@@ -797,9 +810,9 @@
           facilitySelect.innerHTML = buildFacilityOptionsHtml(rows, stop.deliveryFacilityId || '');
           facilitySelect.value = stop.deliveryFacilityId || '';
           setResultCount(facilityResultCount, rows.length);
-          addRecentFacilityId(stop.deliveryFacilityId);
+          addRecentFacilityId(stop.deliveryFacilityId, 'delivery');
           validateForm();
-        }, stop.deliveryFacilityId || '');
+        }, stop.deliveryFacilityId || '', recentDeliveryFacilityIds);
         applyStopFacilitySearch();
         wrap.appendChild(card);
       });
@@ -834,8 +847,8 @@
     }
     async function submitRequest() {
       if (!validateForm()) return;
-      addRecentFacilityId(document.getElementById('originSelect').value || '');
-      stops.forEach(s => addRecentFacilityId(s.deliveryFacilityId || ''));
+      addRecentFacilityId(document.getElementById('originSelect').value || '', 'origin');
+      stops.forEach(s => addRecentFacilityId(s.deliveryFacilityId || '', 'delivery'));
       saveFormState();
       const submitBtn = document.getElementById('submitBtn');
       const submitStatus = document.getElementById('submitStatus');
@@ -949,7 +962,7 @@
         const originSelect = document.getElementById('originSelect');
         originSelect.innerHTML = facilityOptionsHtml;
         originSelect.addEventListener('change', () => {
-          addRecentFacilityId(originSelect.value);
+          addRecentFacilityId(originSelect.value, 'origin');
           validateForm();
         });
         const originSearchInput = document.getElementById('originFacilitySearch');
