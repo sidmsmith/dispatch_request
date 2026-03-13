@@ -55,7 +55,7 @@
     .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0.8rem 1rem; }
     .facility-picker-row { display: grid; grid-template-columns: minmax(240px, 50%) minmax(260px, 50%); gap: 0.45rem; align-items: start; margin-top: 0; }
     .facility-col, .facility-search-col { display: flex; flex-direction: column; gap: 0.1rem; margin: 0; }
-    .facility-label-row { display: flex; align-items: center; gap: 0.4rem; flex-wrap: wrap; min-height: 1.1rem; margin: 0; }
+    .facility-label-row { display: flex; align-items: center; gap: 0.4rem; flex-wrap: nowrap; min-height: 1.8rem; margin: 0; overflow: hidden; }
     .facility-label-row .form-label { margin: 0; }
     .facility-col .form-label, .facility-search-col .form-label { margin: 0; line-height: 1.15; }
     .facility-search-wrap { position: relative; width: 100%; }
@@ -74,7 +74,7 @@
       cursor: pointer;
     }
     .facility-search-btn:hover { background: color-mix(in srgb, var(--primary-color) 18%, transparent); color: var(--primary-color); }
-    .recent-facilities { display: flex; flex-wrap: wrap; gap: 0.35rem; }
+    .recent-facilities { display: flex; flex-wrap: nowrap; gap: 0.35rem; overflow: hidden; }
     .recent-facility-chip {
       border: 1px solid var(--input-border);
       background: color-mix(in srgb, var(--input-bg) 85%, #dbeafe 15%);
@@ -83,6 +83,7 @@
       padding: 0.15rem 0.55rem;
       font-size: 0.78rem;
       cursor: pointer;
+      white-space: nowrap;
     }
     .recent-facility-chip:hover { border-color: var(--primary-color); color: var(--primary-color); }
     .recent-facilities.hidden { display: none; }
@@ -215,7 +216,9 @@
               <select id="originSelect" class="form-select"></select>
             </div>
             <div class="facility-search-col">
-              <label class="form-label fw-semibold">Facility Search</label>
+              <div class="facility-label-row">
+                <label class="form-label fw-semibold">Facility Search</label>
+              </div>
               <div class="facility-search-wrap">
                 <input id="originFacilitySearch" class="form-control facility-search-input" placeholder="Search Facility ID, name, description, city, state..." />
                 <button id="originFacilitySearchBtn" class="facility-search-btn" title="Search facilities"><i class="fas fa-search"></i></button>
@@ -733,7 +736,9 @@
                 <select class="form-select" data-role="facility-select">${facilityOptionsHtml}</select>
               </div>
               <div class="facility-search-col">
-                <label class="form-label fw-semibold">Facility Search</label>
+                <div class="facility-label-row">
+                  <label class="form-label fw-semibold">Facility Search</label>
+                </div>
                 <div class="facility-search-wrap">
                   <input class="form-control facility-search-input" data-role="facility-search-input" placeholder="Search Facility ID, name, description, city, state..." />
                   <button class="facility-search-btn" type="button" data-role="facility-search-btn" title="Search facilities"><i class="fas fa-search"></i></button>
