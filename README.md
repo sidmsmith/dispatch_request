@@ -49,31 +49,179 @@ It reuses the same auth and theming approach as the `dispatch` app, then guides 
 
 ### 1) Authentication
 - Endpoint: `POST /api/auth`
-- App then stores token in memory for session API calls.
+- Request payload:
+  - `org`
+- Result:
+  - OAuth token is returned and stored in memory by the UI for the current session.
 
 ### 2) Main Screen Data
-- Facilities/terminals: `POST /api/facilities`
-  - Terminal query filters for active terminals.
-- Product classes: `POST /api/product_classes`
-  - Display uses normalized Description; falls back to ProductClassId.
-- Terminal resource defaults: `POST /api/terminal_resource_defaults`
-  - Loads Driver/Tractor/Trailer type options and marks defaults.
 
-### 3) Submit Request
+#### Facilities and terminals
+- Endpoint: `POST /api/facilities`
+- Backend source API: `POST /facility/api/facility/facility/search`
+- Pulled facility fields (minimal searchable/display set):
+  - `FacilityId`
+  - `FacilityName`
+  - `Description`
+  - `FacilityTypeTerminal`
+  - `IsActive`
+  - `FacilityAddress.City`
+  - `FacilityAddress.State`
+  - `FacilityAddress.PostalCode`
+  - `FacilityAddress.Country`
+- Terminal list uses:
+  - `Query: "FacilityTypeTerminal = 'true' AND IsActive = 'true'"`
+
+#### Product classes
+- Endpoint: `POST /api/product_classes`
+- Backend source API: `POST /item-master/api/item-master/productClass/search`
+- Display behavior:
+  - Prefer normalized `Description`
+  - Fall back to `ProductClassId`
+  - Alphabetically sorted
+
+#### Terminal defaults
+- Endpoint: `POST /api/terminal_resource_defaults`
+- Backend source APIs:
+  - Asset Manager driver/tractor/trailer searches
+  - Driver type and equipment type lookups
+- Used to populate optional Driver/Tractor/Trailer dropdowns after terminal selection.
+
+### 3) Submit Request (end-to-end orchestration)
 - Endpoint: `POST /api/submit_request`
-- Backend sequence:
-  1. `GET /routing/api/nextup/getNextupNumbersByCounterType?counterTypeId=TransportationOrderId&count=1`
-  2. Build Transportation Order payload
-  3. `POST /routing/api/routing/transportationOrder`
+- This endpoint orchestrates three business creation steps:
+  1. Create Transportation Orders (one TO per stop)
+  2. Create Shipment from those TOs
+  3. Create Trip from the Shipment
 
-If NextUp is unavailable, submit is blocked with:
-- `No NextUp Transportation Order counter is configured in this environment.`
+---
+
+## Detailed Creation APIs
+
+### A) Transportation Order creation
+
+#### NextUp (TO IDs)
+- URL: `GET /routing/api/nextup/getNextupNumbersByCounterType?counterTypeId=TransportationOrderId&count={stopCount}`
+- Purpose:
+  - Fetches one TO ID per delivery stop in a single call.
+
+#### Create TO (one call per stop)
+- URL: `POST /routing/api/routing/transportationOrder`
+- Header-level fields used:
+  - `TransportationOrderId`
+  - `OrderTypeId` (optional passthrough)
+  - `OriginFacilityId`
+  - `DestinationFacilityId` (stop destination)
+  - `PickupStartDateTime`
+  - `PickupEndDateTime`
+  - `DeliveryStartDateTime`
+  - `DeliveryEndDateTime`
+  - `PlanningTypeId` (default `Outbound`)
+  - `ToPlanningStatusId` (default `1000`)
+  - `PrePlanTransportation` (`false`)
+- Line-level fields used:
+  - `TransportationOrderLineId`
+  - `TransportationOrderId`
+  - `DestinationFacilityId` (kept aligned to header destination)
+  - `ProductClassId`
+  - `OrderedQuantity` (pallet count)
+  - `QuantityUomId` (`pallet`)
+  - `ExtendedWeight` = `pallets * avgWeight`
+  - `ExtendedVolume` = `pallets * avgCube`
+  - `WeightUomId` (`lb`)
+  - `VolumeUomId` (`cuft`)
+  - pickup/delivery date windows
+
+### B) Shipment creation
+
+#### NextUp (Shipment ID)
+- URL: `GET /shipment/api/nextup/getNextupNumbersByCounterType?counterTypeId=NEWSHIPMENT&count=1`
+- Purpose:
+  - Returns one shipment ID (example format: `SHIP000000123`).
+
+#### Create Shipment
+- URL: `POST /shipment/api/shipment/shipment/importShipmentWithOrders`
+- Header-level fields used:
+  - `ShipmentId` (from NEWSHIPMENT NextUp)
+  - `ModeId` (`TL`)
+  - `CarrierId` (`PFLT`)
+  - `DesignatedCarrierId` (`PFLT`)
+  - `OrderCreationType` (`TransportationOrder`)
+  - `ExternalShipmentWithTO` (`true`)
+  - `ExternallyPlanned` (`true`)
+  - `PlanningStatusId.PlanningStatusId` (`0500`)
+  - `Actions.Order` (`RESET`)
+  - `Actions.Stop` (`RESET`)
+- Stop construction logic:
+  - Stop 1:
+    - `StopActionId.StopActionId = PU`
+    - `FacilityId = OriginFacilityId`
+    - `StopOrder = all created TO IDs`
+    - `PlannedArrivalDateTime = pickupStart`
+    - `PlannedDepartureDateTime = pickupEnd`
+  - Stops 2..N:
+    - grouped by destination facility in first-seen order
+    - `StopActionId.StopActionId = DL`
+    - each stop contains TO IDs for that destination in `StopOrder`
+    - `PlannedArrivalDateTime = deliveryStart || deliveryEnd`
+    - `PlannedDepartureDateTime = deliveryEnd || deliveryStart`
+
+### C) Trip creation
+- URL: `POST /shipment/api/shipment/createTripFromShipments`
+- Payload:
+  - array with one item:
+    - `TripId: null`
+    - `ShipmentId: <created shipment id>`
+    - `DispatchFlow: true`
+- Response handling:
+  - Supports both common shapes:
+    - `data.ShipmentPlanningAttributes.TripId`
+    - `data.TripId` (string or array)
+  - Includes retry/fallback behavior to reduce false negatives on optimistic lock timing:
+    - retry trip-create attempts
+    - shipment lookup fallback for `TripId`
+
+---
+
+## Facility Search (Origin/Delivery)
+
+Facility dropdowns are populated once (startup load), then searched client-side in memory.
+
+### Search input behavior
+- Origin and each Delivery stop has:
+  - facility dropdown
+  - search textbox + magnifier action
+  - results count text (`Results: X`)
+- Search runs on:
+  - click magnifier
+  - Enter key in search box
+
+### Search fields matched
+Search text is matched against:
+- `FacilityId`
+- `FacilityName`
+- `Description`
+- `City`
+- `State`
+- `PostalCode`
+- `Country`
+
+### Recent chips behavior
+- Origin and Delivery maintain separate recent lists in localStorage:
+  - `dispatch_request_recent_origin_facility_ids_v1`
+  - `dispatch_request_recent_delivery_facility_ids_v1`
+- Up to 3 chips shown per scope.
+- Chips are intentionally resequenced only on submit (not during live edits).
 
 ## Form Behavior and Defaults
 
 ### Header/Theme
 - Theme is saved in `localStorage` key:
   - `dispatch_request_theme`
+- URL behavior:
+  - `Theme=N` or `theme=N` hides the gear/theme picker
+  - `ThemePicker=<theme>` can force startup theme (supports friendly values, case-insensitive)
+    - examples: `manhattan`, `Hy-Vee`, `Rockline Industries`, `Love's Travel Stops`
 
 ### Date Fields
 - Pickup/Delivery date fields are auto-defaulted at runtime.
@@ -102,6 +250,8 @@ If NextUp is unavailable, submit is blocked with:
 - Saved values include:
   - terminal, origin, selected type fields,
   - stop structure and product lines (class, avg weight, avg cube, pallets).
+- Save timing:
+  - form state saves on submit (not realtime while editing).
 - Dates are intentionally not persisted and continue to use runtime defaults.
 
 ## TO Payload Notes
@@ -115,11 +265,12 @@ For each TO line:
 
 ## Debug Logging (F12 Console)
 
-For TO creation debugging only, the UI logs:
-- the POST payload sent to `/routing/api/routing/transportationOrder`
-- the full create response (status + JSON/text)
+The UI logs detailed request/response debug for creation steps:
+- TO create payloads + responses (per stop)
+- Shipment create payload + response
+- Trip create payload + response (including retries/fallback checks)
 
-No extra F12 logging is added for auth, lookups, or NextUp calls.
+This helps troubleshoot partial-success flows where TO/Shipment may exist even if Trip creation reports an error.
 
 ## Project Structure
 
