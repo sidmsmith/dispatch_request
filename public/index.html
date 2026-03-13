@@ -53,6 +53,38 @@
     .section { border: 1px solid var(--border-color); border-radius: 10px; padding: 0.9rem 1rem; margin-bottom: 0.95rem; background: var(--input-bg); }
     .section h6 { margin: 0 0 0.75rem; font-weight: 700; }
     .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0.8rem 1rem; }
+    .facility-picker-row { display: grid; grid-template-columns: minmax(220px, 34%) minmax(260px, 66%); gap: 0.6rem; align-items: end; }
+    .facility-search-wrap { position: relative; width: 100%; }
+    .facility-search-input { padding-right: 2.2rem; }
+    .facility-search-btn {
+      position: absolute;
+      right: 0.3rem;
+      top: 50%;
+      transform: translateY(-50%);
+      border: none;
+      background: transparent;
+      color: var(--text-muted);
+      width: 1.8rem;
+      height: 1.8rem;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+    .facility-search-btn:hover { background: color-mix(in srgb, var(--primary-color) 18%, transparent); color: var(--primary-color); }
+    .recent-facilities { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-top: 0.45rem; }
+    .recent-facility-chip {
+      border: 1px solid var(--input-border);
+      background: color-mix(in srgb, var(--input-bg) 85%, #dbeafe 15%);
+      color: var(--text-color);
+      border-radius: 999px;
+      padding: 0.15rem 0.55rem;
+      font-size: 0.78rem;
+      cursor: pointer;
+    }
+    .recent-facility-chip:hover { border-color: var(--primary-color); color: var(--primary-color); }
+    .recent-facilities.hidden { display: none; }
+    @media (max-width: 900px) {
+      .facility-picker-row { grid-template-columns: 1fr; }
+    }
     .readonly-field { background: color-mix(in srgb, var(--input-bg) 90%, #d1d5db 10%); }
     .field-wrap { position: relative; }
     .stop-card {
@@ -166,7 +198,14 @@
         <h6>Origin</h6>
         <div class="field-wrap">
           <label class="form-label fw-semibold">Origin Facility <span class="text-danger">*</span></label>
-          <select id="originSelect" class="form-select"></select>
+          <div class="facility-picker-row">
+            <select id="originSelect" class="form-select"></select>
+            <div class="facility-search-wrap">
+              <input id="originFacilitySearch" class="form-control facility-search-input" placeholder="Search Facility ID, name, description, city, state..." />
+              <button id="originFacilitySearchBtn" class="facility-search-btn" title="Search facilities"><i class="fas fa-search"></i></button>
+            </div>
+          </div>
+          <div id="originRecentFacilities" class="recent-facilities hidden"></div>
           <div class="muted-note">Must match an existing facility in Facility Master.</div>
         </div>
       </div>
@@ -223,6 +262,8 @@
     let isRestoringState = false;
     let isBootstrappingForm = false;
     const FORM_STORAGE_KEY = 'dispatch_request_form_state_v1';
+    const RECENT_FACILITY_KEY = 'dispatch_request_recent_facility_ids_v1';
+    let recentFacilityIds = [];
     const PRODUCT_CLASS_WEIGHT_DEFAULTS_RAW = {
       '12BR': 1500, '12OM': 1500, 'ACCSSRY': 1100, 'ACID': 2150, 'APPAREL': 1000,
       'AUTO': 1600, 'BATHBODY': 1150, 'CLOTHES': 1000, 'CLOTHING': 1000, 'COSMETIC': 1150,
@@ -320,6 +361,115 @@
         return `<option value="${o.Id}">${label}</option>`;
       }).join('');
       sel.value = defaultId || '';
+    }
+    function loadRecentFacilityIds() {
+      try {
+        const raw = localStorage.getItem(RECENT_FACILITY_KEY);
+        const parsed = raw ? JSON.parse(raw) : [];
+        if (Array.isArray(parsed)) {
+          recentFacilityIds = parsed
+            .map(v => (v || '').toString().trim())
+            .filter(Boolean)
+            .slice(0, 3);
+        } else {
+          recentFacilityIds = [];
+        }
+      } catch (_) {
+        recentFacilityIds = [];
+      }
+    }
+    function saveRecentFacilityIds() {
+      localStorage.setItem(RECENT_FACILITY_KEY, JSON.stringify(recentFacilityIds.slice(0, 3)));
+    }
+    function addRecentFacilityId(facilityId) {
+      const id = (facilityId || '').trim();
+      if (!id) return;
+      recentFacilityIds = [id, ...recentFacilityIds.filter(x => x !== id)].slice(0, 3);
+      saveRecentFacilityIds();
+      refreshRecentFacilityUi();
+    }
+    function getFacilityById(facilityId) {
+      return allFacilities.find(f => (f.FacilityId || '') === facilityId) || null;
+    }
+    function facilitySearchText(f) {
+      return [
+        f.FacilityId,
+        f.FacilityName,
+        f.Description,
+        f.City,
+        f.State,
+        f.PostalCode,
+        f.Country
+      ].map(v => (v || '').toString().trim().toLowerCase()).join(' ');
+    }
+    function filterFacilitiesByTerm(term) {
+      const q = (term || '').toString().trim().toLowerCase();
+      if (!q) return allFacilities.slice();
+      return allFacilities.filter(f => facilitySearchText(f).includes(q));
+    }
+    function buildFacilityOptionsHtml(rows, selectedFacilityId) {
+      const seen = new Set();
+      let list = (rows || []).slice();
+      const selected = selectedFacilityId ? getFacilityById(selectedFacilityId) : null;
+      if (selected && !list.some(f => (f.FacilityId || '') === selectedFacilityId)) {
+        list = [selected, ...list];
+      }
+      const opts = ['<option value="">-- Select Facility --</option>'];
+      list.forEach(f => {
+        const fid = (f.FacilityId || '').trim();
+        if (!fid || seen.has(fid)) return;
+        seen.add(fid);
+        const selectedAttr = fid === (selectedFacilityId || '') ? ' selected' : '';
+        opts.push(`<option value="${fid}"${selectedAttr}>${facilityLabel(f)}</option>`);
+      });
+      return opts.join('');
+    }
+    function renderRecentFacilityButtons(container, onClick, activeId) {
+      if (!container) return;
+      container.innerHTML = '';
+      const validRecent = recentFacilityIds.filter(id => !!getFacilityById(id)).slice(0, 3);
+      if (!validRecent.length) {
+        container.classList.add('hidden');
+        return;
+      }
+      container.classList.remove('hidden');
+      validRecent.forEach(id => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'recent-facility-chip';
+        btn.textContent = id;
+        if (activeId && id === activeId) btn.style.borderColor = 'var(--primary-color)';
+        btn.addEventListener('click', () => onClick(id));
+        container.appendChild(btn);
+      });
+    }
+    function refreshRecentFacilityUi() {
+      const originContainer = document.getElementById('originRecentFacilities');
+      renderRecentFacilityButtons(originContainer, (id) => {
+        const originSelect = document.getElementById('originSelect');
+        const term = document.getElementById('originFacilitySearch').value;
+        originSelect.innerHTML = buildFacilityOptionsHtml(filterFacilitiesByTerm(term), id);
+        originSelect.value = id;
+        addRecentFacilityId(id);
+        validateForm();
+      }, document.getElementById('originSelect')?.value || '');
+
+      document.querySelectorAll('.stop-card').forEach(card => {
+        const sid = Number(card.dataset.stopId);
+        const stop = stops.find(s => s.id === sid);
+        if (!stop) return;
+        const recentContainer = card.querySelector('[data-role="recent-facilities"]');
+        const searchInput = card.querySelector('[data-role="facility-search-input"]');
+        const facilitySelect = card.querySelector('[data-role="facility-select"]');
+        renderRecentFacilityButtons(recentContainer, (id) => {
+          const searchTerm = searchInput ? searchInput.value : '';
+          facilitySelect.innerHTML = buildFacilityOptionsHtml(filterFacilitiesByTerm(searchTerm), id);
+          facilitySelect.value = id;
+          stop.deliveryFacilityId = id;
+          addRecentFacilityId(id);
+          validateForm();
+        }, stop.deliveryFacilityId || '');
+      });
     }
     function saveFormState() {
       if (isRestoringState || isBootstrappingForm) return;
@@ -433,7 +583,10 @@
     }
     function facilityLabel(f) {
       const fid = (f.FacilityId || '').trim();
-      const desc = (f.Description || '').trim();
+      const desc = (f.Description || f.FacilityName || '').trim();
+      const city = (f.City || '').trim();
+      const state = (f.State || '').trim();
+      if (desc && city && state) return `${fid}: ${desc} (${city}, ${state})`;
       if (desc) return `${fid}: ${desc}`;
       return fid;
     }
@@ -526,7 +679,14 @@
           </div>
           <div class="mb-2">
             <label class="form-label fw-semibold">Delivery Facility <span class="text-danger">*</span></label>
-            <select class="form-select" data-role="facility-select">${facilityOptionsHtml}</select>
+            <div class="facility-picker-row">
+              <select class="form-select" data-role="facility-select">${facilityOptionsHtml}</select>
+              <div class="facility-search-wrap">
+                <input class="form-control facility-search-input" data-role="facility-search-input" placeholder="Search Facility ID, name, description, city, state..." />
+                <button class="facility-search-btn" type="button" data-role="facility-search-btn" title="Search facilities"><i class="fas fa-search"></i></button>
+              </div>
+            </div>
+            <div class="recent-facilities hidden" data-role="recent-facilities"></div>
           </div>
           <div class="table-responsive">
             <table class="table table-sm mini-grid mb-1">
@@ -591,11 +751,28 @@
         });
 
         const facilitySelect = card.querySelector('[data-role="facility-select"]');
+        const facilitySearchInput = card.querySelector('[data-role="facility-search-input"]');
+        const facilitySearchBtn = card.querySelector('[data-role="facility-search-btn"]');
         facilitySelect.value = stop.deliveryFacilityId || '';
+        const applyStopFacilitySearch = () => {
+          const searchTerm = facilitySearchInput.value || '';
+          facilitySelect.innerHTML = buildFacilityOptionsHtml(filterFacilitiesByTerm(searchTerm), stop.deliveryFacilityId || '');
+          facilitySelect.value = stop.deliveryFacilityId || '';
+        };
+        facilitySearchBtn.addEventListener('click', () => applyStopFacilitySearch());
+        facilitySearchInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); applyStopFacilitySearch(); } });
         facilitySelect.addEventListener('change', () => {
           stop.deliveryFacilityId = facilitySelect.value;
+          addRecentFacilityId(stop.deliveryFacilityId);
           validateForm();
         });
+        renderRecentFacilityButtons(card.querySelector('[data-role="recent-facilities"]'), (id) => {
+          stop.deliveryFacilityId = id;
+          facilitySelect.innerHTML = buildFacilityOptionsHtml(filterFacilitiesByTerm(facilitySearchInput.value || ''), stop.deliveryFacilityId || '');
+          facilitySelect.value = stop.deliveryFacilityId || '';
+          addRecentFacilityId(stop.deliveryFacilityId);
+          validateForm();
+        }, stop.deliveryFacilityId || '');
         wrap.appendChild(card);
       });
     }
@@ -737,12 +914,25 @@
         if (!pcRes.success) { setStatus(submitStatus, pcRes.error || 'Failed loading product classes.', 'error'); return false; }
         allFacilities = (facRes.facilities || []).sort((a, b) => (a.FacilityId || '').localeCompare(b.FacilityId || ''));
         productClassOptions = (pcRes.productClasses || []).slice();
-        facilityOptionsHtml = '<option value="">-- Select Facility --</option>' +
-          allFacilities.map(f => `<option value="${f.FacilityId}">${facilityLabel(f)}</option>`).join('');
+        facilityOptionsHtml = buildFacilityOptionsHtml(allFacilities, '');
 
         const originSelect = document.getElementById('originSelect');
         originSelect.innerHTML = facilityOptionsHtml;
-        originSelect.addEventListener('change', validateForm);
+        originSelect.addEventListener('change', () => {
+          addRecentFacilityId(originSelect.value);
+          validateForm();
+        });
+        const originSearchInput = document.getElementById('originFacilitySearch');
+        const originSearchBtn = document.getElementById('originFacilitySearchBtn');
+        const applyOriginFacilitySearch = () => {
+          const current = originSelect.value || '';
+          originSelect.innerHTML = buildFacilityOptionsHtml(filterFacilitiesByTerm(originSearchInput.value || ''), current);
+          originSelect.value = current;
+        };
+        originSearchBtn.addEventListener('click', () => applyOriginFacilitySearch());
+        originSearchInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); applyOriginFacilitySearch(); } });
+        loadRecentFacilityIds();
+        refreshRecentFacilityUi();
 
         const terminalSel = document.getElementById('terminalSelect');
         terminalSel.innerHTML = '<option value="">-- Select Terminal --</option>';

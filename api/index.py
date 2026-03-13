@@ -137,10 +137,11 @@ def facilities():
     payload = {
         "Template": {
             "FacilityId": None,
+            "FacilityName": None,
             "Description": None,
             "FacilityTypeTerminal": None,
             "IsActive": None,
-            "FacilityAddress": {"City": None, "State": None},
+            "FacilityAddress": {"City": None, "State": None, "PostalCode": None, "Country": None},
         },
         "Size": 9999,
     }
@@ -178,14 +179,20 @@ def facilities():
             if not fid:
                 continue
             desc = (f.get("Description") or "").strip()
+            facility_name = (f.get("FacilityName") or "").strip()
             addr = f.get("FacilityAddress") or {}
             city = (addr.get("City") or "").strip()
             state = (addr.get("State") or "").strip()
+            postal_code = (addr.get("PostalCode") or "").strip()
+            country = (addr.get("Country") or "").strip()
             row = {
                 "FacilityId": fid,
+                "FacilityName": facility_name,
                 "Description": desc,
                 "City": city,
                 "State": state,
+                "PostalCode": postal_code,
+                "Country": country,
                 "Display": f"{fid}: {desc}" if desc else fid,
                 "FacilityTypeTerminal": bool(f.get("FacilityTypeTerminal")),
                 "IsActive": bool(f.get("IsActive")) if f.get("IsActive") is not None else None,
