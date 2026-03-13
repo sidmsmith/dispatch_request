@@ -76,6 +76,7 @@
     }
     .facility-search-btn:hover { background: color-mix(in srgb, var(--primary-color) 18%, transparent); color: var(--primary-color); }
     .recent-facilities { display: flex; flex-wrap: nowrap; gap: 0.35rem; overflow: hidden; }
+    .recent-terminals { display: flex; flex-wrap: nowrap; gap: 0.35rem; overflow: hidden; }
     .recent-facility-chip {
       border: 1px solid var(--input-border);
       background: color-mix(in srgb, var(--input-bg) 85%, #dbeafe 15%);
@@ -86,6 +87,18 @@
       cursor: pointer;
       white-space: nowrap;
     }
+    .recent-terminal-chip {
+      border: 1px solid var(--input-border);
+      background: color-mix(in srgb, var(--input-bg) 85%, #dbeafe 15%);
+      color: var(--text-color);
+      border-radius: 999px;
+      padding: 0.15rem 0.55rem;
+      font-size: 0.78rem;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+    .recent-terminal-chip:hover { border-color: var(--primary-color); color: var(--primary-color); }
+    .recent-terminals.hidden { display: none; }
     .recent-facility-chip:hover { border-color: var(--primary-color); color: var(--primary-color); }
     .recent-facilities.hidden { display: none; }
     @media (max-width: 900px) {
@@ -188,7 +201,10 @@
             <input class="form-control readonly-field" value="Manual Dispatch Request" readonly />
           </div>
           <div>
-            <label class="form-label fw-semibold">Terminal <span class="text-danger">*</span></label>
+            <div class="facility-label-row">
+              <label class="form-label fw-semibold">Terminal <span class="text-danger">*</span></label>
+              <div id="terminalRecentChips" class="recent-terminals hidden"></div>
+            </div>
             <select id="terminalSelect" class="form-select"></select>
           </div>
           <div>
@@ -273,6 +289,7 @@
     let driverTypeOptions = [];
     let tractorTypeOptions = [];
     let trailerTypeOptions = [];
+    let terminalOptions = [];
     let defaultDriverTypeId = '';
     let defaultTractorTypeId = '';
     let defaultTrailerTypeId = '';
@@ -283,8 +300,10 @@
     let isRestoringState = false;
     let isBootstrappingForm = false;
     const FORM_STORAGE_KEY = 'dispatch_request_form_state_v1';
+    const RECENT_TERMINAL_KEY = 'dispatch_request_recent_terminal_ids_v1';
     const RECENT_ORIGIN_FACILITY_KEY = 'dispatch_request_recent_origin_facility_ids_v1';
     const RECENT_DELIVERY_FACILITY_KEY = 'dispatch_request_recent_delivery_facility_ids_v1';
+    let recentTerminalIds = [];
     let recentOriginFacilityIds = [];
     let recentDeliveryFacilityIds = [];
     const PRODUCT_CLASS_WEIGHT_DEFAULTS_RAW = {
@@ -414,12 +433,21 @@
       }
     }
     function loadRecentFacilityIds() {
+      recentTerminalIds = readRecentFacilityList(RECENT_TERMINAL_KEY);
       recentOriginFacilityIds = readRecentFacilityList(RECENT_ORIGIN_FACILITY_KEY);
       recentDeliveryFacilityIds = readRecentFacilityList(RECENT_DELIVERY_FACILITY_KEY);
     }
     function saveRecentFacilityIds() {
+      localStorage.setItem(RECENT_TERMINAL_KEY, JSON.stringify(recentTerminalIds.slice(0, 3)));
       localStorage.setItem(RECENT_ORIGIN_FACILITY_KEY, JSON.stringify(recentOriginFacilityIds.slice(0, 3)));
       localStorage.setItem(RECENT_DELIVERY_FACILITY_KEY, JSON.stringify(recentDeliveryFacilityIds.slice(0, 3)));
+    }
+    function addRecentTerminalId(terminalId) {
+      const id = (terminalId || '').trim();
+      if (!id) return;
+      recentTerminalIds = [id, ...recentTerminalIds.filter(x => x !== id)].slice(0, 3);
+      saveRecentFacilityIds();
+      refreshTerminalRecentUi();
     }
     function addRecentFacilityId(facilityId, scope) {
       const id = (facilityId || '').trim();
@@ -492,6 +520,35 @@
         btn.addEventListener('click', () => onClick(id));
         container.appendChild(btn);
       });
+    }
+    function renderRecentTerminalButtons(container, onClick, activeId, ids) {
+      if (!container) return;
+      container.innerHTML = '';
+      const valid = (ids || []).filter(id => terminalOptions.some(t => (t.TerminalId || '') === id)).slice(0, 3);
+      if (!valid.length) {
+        container.classList.add('hidden');
+        return;
+      }
+      container.classList.remove('hidden');
+      valid.forEach(id => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'recent-terminal-chip';
+        btn.textContent = id;
+        if (activeId && id === activeId) btn.style.borderColor = 'var(--primary-color)';
+        btn.addEventListener('click', () => onClick(id));
+        container.appendChild(btn);
+      });
+    }
+    function refreshTerminalRecentUi() {
+      const terminalSel = document.getElementById('terminalSelect');
+      const chips = document.getElementById('terminalRecentChips');
+      renderRecentTerminalButtons(chips, async (id) => {
+        if (!terminalSel) return;
+        terminalSel.value = id;
+        await loadTerminalResourceDefaults();
+        validateForm();
+      }, terminalSel ? terminalSel.value : '', recentTerminalIds);
     }
     function refreshRecentFacilityUi() {
       const originContainer = document.getElementById('originRecentFacilities');
@@ -612,6 +669,7 @@
       const terminalId = document.getElementById('terminalSelect').value;
       if (!terminalId) {
         resetTypeDropdowns();
+        refreshTerminalRecentUi();
         validateForm();
         return;
       }
@@ -620,6 +678,7 @@
       if (!res.success) {
         setStatus(document.getElementById('submitStatus'), res.error || 'Failed loading terminal type defaults.', 'error');
         resetTypeDropdowns();
+        refreshTerminalRecentUi();
         validateForm();
         return;
       }
@@ -632,6 +691,7 @@
       fillTypeSelect('driverType', driverTypeOptions, defaultDriverTypeId);
       fillTypeSelect('tractorType', tractorTypeOptions, defaultTractorTypeId);
       fillTypeSelect('trailerType', trailerTypeOptions, defaultTrailerTypeId);
+      refreshTerminalRecentUi();
       validateForm();
     }
     function facilityLabel(f) {
@@ -868,11 +928,12 @@
       if (new Date(ds) <= new Date(pe)) { submitBtn.disabled = true; setStatus(submitStatus, 'Delivery Start must be later than Pickup End.', 'error'); return false; }
       if (new Date(de) <= new Date(ds)) { submitBtn.disabled = true; setStatus(submitStatus, 'Delivery End must be later than Delivery Start.', 'error'); return false; }
       submitBtn.disabled = false;
-      setStatus(submitStatus, 'Ready to submit.', 'success');
+      setStatus(submitStatus, '', 'info');
       return true;
     }
     async function submitRequest() {
       if (!validateForm()) return;
+      addRecentTerminalId(document.getElementById('terminalSelect').value || '');
       addRecentFacilityId(document.getElementById('originSelect').value || '', 'origin');
       stops.forEach(s => addRecentFacilityId(s.deliveryFacilityId || '', 'delivery'));
       saveFormState();
@@ -1007,8 +1068,9 @@
         refreshRecentFacilityUi();
 
         const terminalSel = document.getElementById('terminalSelect');
+        terminalOptions = (facRes.terminals || []).slice();
         terminalSel.innerHTML = '<option value="">-- Select Terminal --</option>';
-        (facRes.terminals || []).forEach(t => {
+        terminalOptions.forEach(t => {
           const o = document.createElement('option');
           o.value = t.TerminalId;
           o.textContent = t.Display || t.TerminalId;
@@ -1020,6 +1082,7 @@
         idSeq = 1;
         addStop();
         refreshRecentFacilityUi();
+        refreshTerminalRecentUi();
         setStatus(submitStatus, 'Terminals/facilities/product classes loaded.', 'success');
         return true;
       } finally {
@@ -1040,6 +1103,7 @@
       await loadFormData();
       await restoreFormState();
       refreshRecentFacilityUi();
+      refreshTerminalRecentUi();
       applyDateDefaults();
       validateForm();
     }
