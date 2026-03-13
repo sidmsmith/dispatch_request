@@ -44,6 +44,7 @@
     .theme-option:hover, .theme-option.active { background: rgba(51,154,240,0.12); }
     .form-control, .form-select { background: var(--input-bg); border: 1px solid var(--input-border); color: var(--text-color); }
     .form-control:focus, .form-select:focus { background: var(--input-focus-bg); border-color: var(--input-focus-border); box-shadow: 0 0 0 0.2rem var(--input-focus-shadow); color: var(--text-color); }
+    .form-control::placeholder { color: var(--text-muted); opacity: 1; }
     .btn-primary { background: var(--primary-color); border-color: var(--primary-color); }
     .btn-primary:hover { background: var(--primary-hover); border-color: var(--primary-hover); }
     .btn-success { background: var(--success-color); border-color: var(--success-color); }
@@ -138,7 +139,8 @@
       background: var(--primary-color);
       box-shadow: 0 0 0 3px rgba(255,255,255,0.9), 0 0 10px rgba(51,154,240,0.55);
     }
-    .mini-grid th, .mini-grid td { font-size: 0.88rem; vertical-align: middle; }
+    .mini-grid th, .mini-grid td { font-size: 0.88rem; vertical-align: middle; border-color: transparent !important; }
+    .mini-grid > :not(caption) > * > * { border-bottom-width: 0 !important; }
     .muted-note { font-size: 0.82rem; color: var(--text-muted); margin-top: 0.25rem; }
     #mainScreen { display: none; }
     .submit-wrap { text-align: center; }
@@ -352,6 +354,24 @@
       }
       localStorage.setItem('dispatch_request_theme', name);
       document.querySelectorAll('.theme-option').forEach(o => o.classList.toggle('active', o.dataset.theme === name));
+    }
+    function normalizeThemeToken(value) {
+      return (value || '').toString().toLowerCase().replace(/[^a-z0-9]/g, '');
+    }
+    function resolveThemeFromParam(rawValue) {
+      const token = normalizeThemeToken(rawValue);
+      if (!token) return null;
+      const aliasMap = {
+        light: 'light',
+        dark: 'dark',
+        manhattan: 'manhattan',
+        loves: 'loves',
+        lovestravelstops: 'loves',
+        rockline: 'rockline',
+        rocklineindustries: 'rockline',
+        hyvee: 'hyvee'
+      };
+      return aliasMap[token] || null;
     }
     function formatDtLocal(d) {
       const yyyy = d.getFullYear(), mm = String(d.getMonth()+1).padStart(2,'0'), dd = String(d.getDate()).padStart(2,'0');
@@ -1068,8 +1088,11 @@
       const startupOrg = (params.get('ORG') || params.get('Organization') || '').trim();
       if (startupOrg) document.getElementById('orgInput').value = startupOrg;
       if ((params.get('Theme') || '').toUpperCase() === 'N') document.getElementById('themeContainer').style.display = 'none';
+      const pickerThemeRaw = params.get('ThemePicker') || params.get('themepicker') || '';
+      const pickerTheme = resolveThemeFromParam(pickerThemeRaw);
       const savedTheme = localStorage.getItem('dispatch_request_theme') || 'manhattan';
-      applyTheme(THEMES[savedTheme] ? savedTheme : 'manhattan');
+      const startupTheme = pickerTheme || (THEMES[savedTheme] ? savedTheme : 'manhattan');
+      applyTheme(startupTheme);
       if (startupOrg) await authenticate(); else setStatus(document.getElementById('authStatus'), 'Enter ORG to authenticate.', 'info');
     })();
   </script>
