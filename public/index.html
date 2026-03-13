@@ -13,7 +13,7 @@
       --input-border: #cbd5e0; --input-focus-bg: #ffffff; --input-focus-border: #339af0;
       --input-focus-shadow: rgba(51,154,240,0.25); --primary-color: #339af0;
       --primary-hover: #228be6; --success-color: #28a745; --danger-color: #dc3545;
-      --header-text: #1f2933;
+      --header-text: #1f2933; --stop-bg-odd: #ffffff; --stop-bg-even: #eaf4ff; --stop-even-border: #8ec5ff;
     }
     html, body { height: 100%; margin: 0; background: var(--bg-color); color: var(--text-color); }
     body { padding: 1rem; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; }
@@ -96,11 +96,16 @@
       border-radius: 10px;
       padding: 0.7rem;
       margin-bottom: 0.75rem;
-      background: var(--input-bg);
+      --stop-row-bg: var(--stop-bg-odd);
+      background: var(--stop-row-bg);
       position: relative;
       transition: box-shadow 0.12s ease, transform 0.12s ease, border-color 0.12s ease;
     }
-    .stop-card.alt { background: #eaf4ff; border-color: #8ec5ff; }
+    .stop-card.alt { --stop-row-bg: var(--stop-bg-even); background: var(--stop-row-bg); border-color: var(--stop-even-border); }
+    .stop-card .mini-grid, .stop-card .mini-grid th, .stop-card .mini-grid td {
+      background: var(--stop-row-bg) !important;
+      color: inherit;
+    }
     .stop-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.5rem; }
     .stop-actions { display: flex; gap: 0.4rem; align-items: center; }
     .drag-handle-btn {
@@ -118,7 +123,7 @@
     }
     .stop-card.drag-over {
       border-color: var(--primary-color);
-      box-shadow: 0 0 0 3px rgba(51,154,240,0.45), 0 10px 22px rgba(0,0,0,0.14);
+      box-shadow: 0 0 0 6px rgba(51,154,240,0.45), 0 10px 22px rgba(0,0,0,0.14);
       transform: translateY(-1px);
     }
     .stop-card.drag-over::before {
@@ -126,11 +131,11 @@
       position: absolute;
       left: -2px;
       right: -2px;
-      top: -9px;
-      height: 6px;
+      top: -11px;
+      height: 8px;
       border-radius: 999px;
       background: var(--primary-color);
-      box-shadow: 0 0 0 2px rgba(255,255,255,0.9), 0 0 10px rgba(51,154,240,0.55);
+      box-shadow: 0 0 0 3px rgba(255,255,255,0.9), 0 0 10px rgba(51,154,240,0.55);
     }
     .mini-grid th, .mini-grid td { font-size: 0.88rem; vertical-align: middle; }
     .muted-note { font-size: 0.82rem; color: var(--text-muted); margin-top: 0.25rem; }
@@ -313,12 +318,12 @@
     };
 
     const THEMES = {
-      light: {'--bg-color':'#ffffff','--text-color':'#1f2933','--text-muted':'#616e7c','--card-bg':'#f8fafc','--border-color':'#d9e2ec','--input-bg':'#ffffff','--input-border':'#cbd5e0','--input-focus-bg':'#ffffff','--input-focus-border':'#339af0','--input-focus-shadow':'rgba(51,154,240,0.25)','--primary-color':'#339af0','--primary-hover':'#228be6','--success-color':'#28a745','--danger-color':'#dc3545','--header-text':'#1f2933'},
-      dark: {'--bg-color':'#1a1d23','--text-color':'#e2e8f0','--text-muted':'#a0aec0','--card-bg':'#2d3748','--border-color':'#4a5568','--input-bg':'#2d3748','--input-border':'#4a5568','--input-focus-bg':'#2d3748','--input-focus-border':'#63b3ed','--input-focus-shadow':'rgba(99,179,237,0.25)','--primary-color':'#63b3ed','--primary-hover':'#4299e1','--success-color':'#48bb78','--danger-color':'#fc8181','--header-text':'#e2e8f0'},
-      manhattan: {'--bg-color':'#2d2f3b','--text-color':'#e0e0e0','--text-muted':'#b0b0b0','--card-bg':'#484e5e','--border-color':'#5a6172','--input-bg':'#3a3f4e','--input-border':'#5a6172','--input-focus-bg':'#3a3f4e','--input-focus-border':'#339af0','--input-focus-shadow':'rgba(51,154,240,0.25)','--primary-color':'#339af0','--primary-hover':'#228be6','--success-color':'#51cf66','--danger-color':'#ff6b6b','--header-text':'#e0e0e0'},
-      loves: {'--bg-color':'#ffffff','--text-color':'#212529','--text-muted':'#6c757d','--card-bg':'#ffffff','--border-color':'#dee2e6','--input-bg':'#f5f5f5','--input-border':'#ced4da','--input-focus-bg':'#ffffff','--input-focus-border':'#E31837','--input-focus-shadow':'rgba(227,24,55,0.25)','--primary-color':'#E31837','--primary-hover':'#C0142D','--success-color':'#28a745','--danger-color':'#dc3545','--header-text':'#212529'},
-      rockline: {'--bg-color':'#ffffff','--text-color':'#2d2d2d','--text-muted':'#6b7d66','--card-bg':'#ffffff','--border-color':'#d4ddd0','--input-bg':'#f0f2ee','--input-border':'#b8c9b3','--input-focus-bg':'#ffffff','--input-focus-border':'#6EB43F','--input-focus-shadow':'rgba(110,180,63,0.25)','--primary-color':'#6EB43F','--primary-hover':'#5a9a32','--success-color':'#6EB43F','--danger-color':'#c62828','--header-text':'#2d2d2d'},
-      hyvee: {'--bg-color':'#ffffff','--text-color':'#1f1f1f','--text-muted':'#6c757d','--card-bg':'#ffffff','--border-color':'#e0d6d6','--input-bg':'#faf7f7','--input-border':'#d4c9c9','--input-focus-bg':'#ffffff','--input-focus-border':'#E2231A','--input-focus-shadow':'rgba(226,35,26,0.25)','--primary-color':'#E2231A','--primary-hover':'#c41e16','--success-color':'#28a745','--danger-color':'#dc3545','--header-text':'#1f1f1f'}
+      light: {'--bg-color':'#ffffff','--text-color':'#1f2933','--text-muted':'#616e7c','--card-bg':'#f8fafc','--border-color':'#d9e2ec','--input-bg':'#ffffff','--input-border':'#cbd5e0','--input-focus-bg':'#ffffff','--input-focus-border':'#339af0','--input-focus-shadow':'rgba(51,154,240,0.25)','--primary-color':'#339af0','--primary-hover':'#228be6','--success-color':'#28a745','--danger-color':'#dc3545','--header-text':'#1f2933','--stop-bg-odd':'#ffffff','--stop-bg-even':'#eaf4ff','--stop-even-border':'#8ec5ff'},
+      dark: {'--bg-color':'#1a1d23','--text-color':'#e2e8f0','--text-muted':'#a0aec0','--card-bg':'#2d3748','--border-color':'#4a5568','--input-bg':'#2d3748','--input-border':'#4a5568','--input-focus-bg':'#2d3748','--input-focus-border':'#63b3ed','--input-focus-shadow':'rgba(99,179,237,0.25)','--primary-color':'#63b3ed','--primary-hover':'#4299e1','--success-color':'#48bb78','--danger-color':'#fc8181','--header-text':'#e2e8f0','--stop-bg-odd':'#2d3748','--stop-bg-even':'#344256','--stop-even-border':'#6f8ab4'},
+      manhattan: {'--bg-color':'#2d2f3b','--text-color':'#e0e0e0','--text-muted':'#b0b0b0','--card-bg':'#484e5e','--border-color':'#5a6172','--input-bg':'#3a3f4e','--input-border':'#5a6172','--input-focus-bg':'#3a3f4e','--input-focus-border':'#339af0','--input-focus-shadow':'rgba(51,154,240,0.25)','--primary-color':'#339af0','--primary-hover':'#228be6','--success-color':'#51cf66','--danger-color':'#ff6b6b','--header-text':'#e0e0e0','--stop-bg-odd':'#3a3f4e','--stop-bg-even':'#4a536a','--stop-even-border':'#7387ab'},
+      loves: {'--bg-color':'#ffffff','--text-color':'#212529','--text-muted':'#6c757d','--card-bg':'#ffffff','--border-color':'#dee2e6','--input-bg':'#f5f5f5','--input-border':'#ced4da','--input-focus-bg':'#ffffff','--input-focus-border':'#E31837','--input-focus-shadow':'rgba(227,24,55,0.25)','--primary-color':'#E31837','--primary-hover':'#C0142D','--success-color':'#28a745','--danger-color':'#dc3545','--header-text':'#212529','--stop-bg-odd':'#f5f5f5','--stop-bg-even':'#fff1f3','--stop-even-border':'#f0b0ba'},
+      rockline: {'--bg-color':'#ffffff','--text-color':'#2d2d2d','--text-muted':'#6b7d66','--card-bg':'#ffffff','--border-color':'#d4ddd0','--input-bg':'#f0f2ee','--input-border':'#b8c9b3','--input-focus-bg':'#ffffff','--input-focus-border':'#6EB43F','--input-focus-shadow':'rgba(110,180,63,0.25)','--primary-color':'#6EB43F','--primary-hover':'#5a9a32','--success-color':'#6EB43F','--danger-color':'#c62828','--header-text':'#2d2d2d','--stop-bg-odd':'#f0f2ee','--stop-bg-even':'#e8f3df','--stop-even-border':'#b7d7a6'},
+      hyvee: {'--bg-color':'#ffffff','--text-color':'#1f1f1f','--text-muted':'#6c757d','--card-bg':'#ffffff','--border-color':'#e0d6d6','--input-bg':'#faf7f7','--input-border':'#d4c9c9','--input-focus-bg':'#ffffff','--input-focus-border':'#E2231A','--input-focus-shadow':'rgba(226,35,26,0.25)','--primary-color':'#E2231A','--primary-hover':'#c41e16','--success-color':'#28a745','--danger-color':'#dc3545','--header-text':'#1f1f1f','--stop-bg-odd':'#faf7f7','--stop-bg-even':'#fff0ef','--stop-even-border':'#efb6b2'}
     };
     const THEME_LOGOS = {
       light: '/manhattan-logo.png',
