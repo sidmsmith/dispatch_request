@@ -701,7 +701,7 @@
             <strong>Stop #${stop.sequence}</strong>
             <div class="stop-actions">
               <button class="drag-handle-btn" data-role="drag-handle" draggable="true" title="Drag to reorder stop"><i class="fas fa-grip-vertical"></i></button>
-              <button class="btn btn-outline-danger btn-sm" data-role="remove-stop"><i class="fas fa-trash"></i></button>
+              <button class="btn btn-outline-danger btn-sm" data-role="remove-stop"${stops.length <= 1 ? ' style="display:none;"' : ''}><i class="fas fa-trash"></i></button>
             </div>
           </div>
           <div class="mb-2">
@@ -769,7 +769,7 @@
             <td><input type="number" min="0" step="0.01" class="form-control form-control-sm" data-role="avgWeight" value="${p.avgWeight}" /></td>
             <td><input type="number" min="0" step="0.01" class="form-control form-control-sm" data-role="avgCube" value="${p.avgCube}" /></td>
             <td><input type="number" min="0" step="0.01" class="form-control form-control-sm" data-role="pallets" value="${p.pallets}" /></td>
-            <td><button class="btn btn-outline-danger btn-sm" data-role="remove-line"><i class="fas fa-times"></i></button></td>
+            <td><button class="btn btn-outline-danger btn-sm" data-role="remove-line"${stop.products.length <= 1 ? ' style="display:none;"' : ''}><i class="fas fa-times"></i></button></td>
           `;
           tr.querySelector('[data-role="pclass"]').addEventListener('change', e => {
             p.productClass = e.target.value;
