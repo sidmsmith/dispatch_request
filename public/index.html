@@ -1087,7 +1087,8 @@
       const params = new URLSearchParams(window.location.search);
       const startupOrg = (params.get('ORG') || params.get('Organization') || '').trim();
       if (startupOrg) document.getElementById('orgInput').value = startupOrg;
-      if ((params.get('Theme') || '').toUpperCase() === 'N') document.getElementById('themeContainer').style.display = 'none';
+      const hideThemeParam = (params.get('Theme') || params.get('theme') || '').toUpperCase();
+      if (hideThemeParam === 'N') document.getElementById('themeContainer').style.display = 'none';
       const pickerThemeRaw = params.get('ThemePicker') || params.get('themepicker') || '';
       const pickerTheme = resolveThemeFromParam(pickerThemeRaw);
       const savedTheme = localStorage.getItem('dispatch_request_theme') || 'manhattan';
