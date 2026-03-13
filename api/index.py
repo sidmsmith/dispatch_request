@@ -676,6 +676,7 @@ def submit_request():
                 {
                     "success": False,
                     "error": f"Shipment NextUp failed: HTTP {snr.status_code}",
+                    "toNumbers": created_numbers,
                     "toCreateDebug": to_create_debug,
                     "shipmentNextupDebug": shipment_nextup_debug,
                 }
@@ -695,6 +696,7 @@ def submit_request():
                 {
                     "success": False,
                     "error": "No Shipment NextUp counter is configured in this environment.",
+                    "toNumbers": created_numbers,
                     "toCreateDebug": to_create_debug,
                     "shipmentNextupDebug": shipment_nextup_debug,
                 }
@@ -704,6 +706,7 @@ def submit_request():
             {
                 "success": False,
                 "error": f"Shipment NextUp failed: {e}",
+                "toNumbers": created_numbers,
                 "toCreateDebug": to_create_debug,
                 "shipmentNextupDebug": shipment_nextup_debug,
             }
@@ -716,6 +719,8 @@ def submit_request():
             {
                 "success": False,
                 "error": str(e),
+                "toNumbers": created_numbers,
+                "shipmentId": shipment_id,
                 "toCreateDebug": to_create_debug,
                 "shipmentNextupDebug": shipment_nextup_debug,
             }
@@ -744,6 +749,8 @@ def submit_request():
                 {
                     "success": False,
                     "error": f"Create Shipment failed: HTTP {sr.status_code}",
+                    "toNumbers": created_numbers,
+                    "shipmentId": shipment_id,
                     "toCreateDebug": to_create_debug,
                     "shipmentNextupDebug": shipment_nextup_debug,
                     "shipmentCreateDebug": shipment_create_debug,
@@ -755,6 +762,8 @@ def submit_request():
             {
                 "success": False,
                 "error": f"Create Shipment failed: {e}",
+                "toNumbers": created_numbers,
+                "shipmentId": shipment_id,
                 "toCreateDebug": to_create_debug,
                 "shipmentNextupDebug": shipment_nextup_debug,
                 "shipmentCreateDebug": shipment_create_debug,
@@ -787,6 +796,8 @@ def submit_request():
                 {
                     "success": False,
                     "error": f"Create Trip failed: HTTP {tr.status_code}",
+                    "toNumbers": created_numbers,
+                    "shipmentId": shipment_id,
                     "toCreateDebug": to_create_debug,
                     "shipmentNextupDebug": shipment_nextup_debug,
                     "shipmentCreateDebug": shipment_create_debug,
@@ -802,6 +813,8 @@ def submit_request():
                         "Create Trip failed: "
                         f"{trip_body.get('messageKey') or trip_body.get('message') or 'Unknown error'}"
                     ),
+                    "toNumbers": created_numbers,
+                    "shipmentId": shipment_id,
                     "toCreateDebug": to_create_debug,
                     "shipmentNextupDebug": shipment_nextup_debug,
                     "shipmentCreateDebug": shipment_create_debug,
@@ -825,6 +838,8 @@ def submit_request():
                         "TripId not found in createTripFromShipments response "
                         "(expected data.ShipmentPlanningAttributes.TripId)"
                     ),
+                    "toNumbers": created_numbers,
+                    "shipmentId": shipment_id,
                     "toCreateDebug": to_create_debug,
                     "shipmentNextupDebug": shipment_nextup_debug,
                     "shipmentCreateDebug": shipment_create_debug,
@@ -836,6 +851,8 @@ def submit_request():
             {
                 "success": False,
                 "error": f"Create Trip failed: {e}",
+                "toNumbers": created_numbers,
+                "shipmentId": shipment_id,
                 "toCreateDebug": to_create_debug,
                 "shipmentNextupDebug": shipment_nextup_debug,
                 "shipmentCreateDebug": shipment_create_debug,

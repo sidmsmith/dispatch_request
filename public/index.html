@@ -696,7 +696,22 @@
           });
           console.groupEnd();
         }
-        if (!res.success) { setStatus(submitStatus, res.error || 'Submit failed.', 'error'); return; }
+        if (!res.success) {
+          const createdParts = [];
+          if (Array.isArray(res.toNumbers) && res.toNumbers.length) {
+            createdParts.push(`TOs: ${res.toNumbers.join(', ')}`);
+          }
+          if (res.shipmentId) {
+            createdParts.push(`Shipment: ${res.shipmentId}`);
+          }
+          if (res.tripId) {
+            createdParts.push(`Trip: ${res.tripId}`);
+          }
+          const baseError = res.error || 'Submit failed.';
+          const detailSuffix = createdParts.length ? ` Created so far -> ${createdParts.join(' | ')}` : '';
+          setStatus(submitStatus, `${baseError}${detailSuffix}`, 'error');
+          return;
+        }
         const niceMsg = res.message
           || (Array.isArray(res.toNumbers) && res.toNumbers.length
             ? `Transportation Orders created successfully: ${res.toNumbers.join(', ')}${res.shipmentId ? `. Shipment created successfully: ${res.shipmentId}` : ''}${res.tripId ? `. Trip created successfully: ${res.tripId}` : ''}`
