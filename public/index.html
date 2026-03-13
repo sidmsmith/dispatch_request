@@ -53,7 +53,8 @@
     .section { border: 1px solid var(--border-color); border-radius: 10px; padding: 0.9rem 1rem; margin-bottom: 0.95rem; background: var(--input-bg); }
     .section h6 { margin: 0 0 0.75rem; font-weight: 700; }
     .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0.8rem 1rem; }
-    .facility-picker-row { display: grid; grid-template-columns: minmax(220px, 34%) minmax(260px, 66%); gap: 0.6rem; align-items: end; }
+    .facility-picker-row { display: grid; grid-template-columns: minmax(240px, 50%) minmax(260px, 50%); gap: 0.6rem; align-items: end; }
+    .facility-search-col .form-label { margin-bottom: 0.3rem; }
     .facility-search-wrap { position: relative; width: 100%; }
     .facility-search-input { padding-right: 2.2rem; }
     .facility-search-btn {
@@ -200,13 +201,16 @@
           <label class="form-label fw-semibold">Origin Facility <span class="text-danger">*</span></label>
           <div class="facility-picker-row">
             <select id="originSelect" class="form-select"></select>
-            <div class="facility-search-wrap">
-              <input id="originFacilitySearch" class="form-control facility-search-input" placeholder="Search Facility ID, name, description, city, state..." />
-              <button id="originFacilitySearchBtn" class="facility-search-btn" title="Search facilities"><i class="fas fa-search"></i></button>
+            <div class="facility-search-col">
+              <label class="form-label fw-semibold">Facility Search</label>
+              <div class="facility-search-wrap">
+                <input id="originFacilitySearch" class="form-control facility-search-input" placeholder="Search Facility ID, name, description, city, state..." />
+                <button id="originFacilitySearchBtn" class="facility-search-btn" title="Search facilities"><i class="fas fa-search"></i></button>
+              </div>
             </div>
           </div>
           <div id="originRecentFacilities" class="recent-facilities hidden"></div>
-          <div class="muted-note">Must match an existing facility in Facility Master.</div>
+          <div id="originResultCount" class="muted-note">Results: 0</div>
         </div>
       </div>
 
@@ -407,6 +411,10 @@
       if (!q) return allFacilities.slice();
       return allFacilities.filter(f => facilitySearchText(f).includes(q));
     }
+    function setResultCount(el, count) {
+      if (!el) return;
+      el.textContent = `Results: ${Number(count || 0)}`;
+    }
     function buildFacilityOptionsHtml(rows, selectedFacilityId) {
       const seen = new Set();
       let list = (rows || []).slice();
@@ -448,8 +456,10 @@
       renderRecentFacilityButtons(originContainer, (id) => {
         const originSelect = document.getElementById('originSelect');
         const term = document.getElementById('originFacilitySearch').value;
-        originSelect.innerHTML = buildFacilityOptionsHtml(filterFacilitiesByTerm(term), id);
+        const rows = filterFacilitiesByTerm(term);
+        originSelect.innerHTML = buildFacilityOptionsHtml(rows, id);
         originSelect.value = id;
+        setResultCount(document.getElementById('originResultCount'), rows.length);
         addRecentFacilityId(id);
         validateForm();
       }, document.getElementById('originSelect')?.value || '');
@@ -461,10 +471,13 @@
         const recentContainer = card.querySelector('[data-role="recent-facilities"]');
         const searchInput = card.querySelector('[data-role="facility-search-input"]');
         const facilitySelect = card.querySelector('[data-role="facility-select"]');
+        const resultCount = card.querySelector('[data-role="facility-result-count"]');
         renderRecentFacilityButtons(recentContainer, (id) => {
           const searchTerm = searchInput ? searchInput.value : '';
-          facilitySelect.innerHTML = buildFacilityOptionsHtml(filterFacilitiesByTerm(searchTerm), id);
+          const rows = filterFacilitiesByTerm(searchTerm);
+          facilitySelect.innerHTML = buildFacilityOptionsHtml(rows, id);
           facilitySelect.value = id;
+          setResultCount(resultCount, rows.length);
           stop.deliveryFacilityId = id;
           addRecentFacilityId(id);
           validateForm();
@@ -681,12 +694,16 @@
             <label class="form-label fw-semibold">Delivery Facility <span class="text-danger">*</span></label>
             <div class="facility-picker-row">
               <select class="form-select" data-role="facility-select">${facilityOptionsHtml}</select>
-              <div class="facility-search-wrap">
-                <input class="form-control facility-search-input" data-role="facility-search-input" placeholder="Search Facility ID, name, description, city, state..." />
-                <button class="facility-search-btn" type="button" data-role="facility-search-btn" title="Search facilities"><i class="fas fa-search"></i></button>
+              <div class="facility-search-col">
+                <label class="form-label fw-semibold">Facility Search</label>
+                <div class="facility-search-wrap">
+                  <input class="form-control facility-search-input" data-role="facility-search-input" placeholder="Search Facility ID, name, description, city, state..." />
+                  <button class="facility-search-btn" type="button" data-role="facility-search-btn" title="Search facilities"><i class="fas fa-search"></i></button>
+                </div>
               </div>
             </div>
             <div class="recent-facilities hidden" data-role="recent-facilities"></div>
+            <div class="muted-note" data-role="facility-result-count">Results: 0</div>
           </div>
           <div class="table-responsive">
             <table class="table table-sm mini-grid mb-1">
@@ -753,11 +770,14 @@
         const facilitySelect = card.querySelector('[data-role="facility-select"]');
         const facilitySearchInput = card.querySelector('[data-role="facility-search-input"]');
         const facilitySearchBtn = card.querySelector('[data-role="facility-search-btn"]');
+        const facilityResultCount = card.querySelector('[data-role="facility-result-count"]');
         facilitySelect.value = stop.deliveryFacilityId || '';
         const applyStopFacilitySearch = () => {
           const searchTerm = facilitySearchInput.value || '';
-          facilitySelect.innerHTML = buildFacilityOptionsHtml(filterFacilitiesByTerm(searchTerm), stop.deliveryFacilityId || '');
+          const rows = filterFacilitiesByTerm(searchTerm);
+          facilitySelect.innerHTML = buildFacilityOptionsHtml(rows, stop.deliveryFacilityId || '');
           facilitySelect.value = stop.deliveryFacilityId || '';
+          setResultCount(facilityResultCount, rows.length);
         };
         facilitySearchBtn.addEventListener('click', () => applyStopFacilitySearch());
         facilitySearchInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); applyStopFacilitySearch(); } });
@@ -768,11 +788,14 @@
         });
         renderRecentFacilityButtons(card.querySelector('[data-role="recent-facilities"]'), (id) => {
           stop.deliveryFacilityId = id;
-          facilitySelect.innerHTML = buildFacilityOptionsHtml(filterFacilitiesByTerm(facilitySearchInput.value || ''), stop.deliveryFacilityId || '');
+          const rows = filterFacilitiesByTerm(facilitySearchInput.value || '');
+          facilitySelect.innerHTML = buildFacilityOptionsHtml(rows, stop.deliveryFacilityId || '');
           facilitySelect.value = stop.deliveryFacilityId || '';
+          setResultCount(facilityResultCount, rows.length);
           addRecentFacilityId(stop.deliveryFacilityId);
           validateForm();
         }, stop.deliveryFacilityId || '');
+        applyStopFacilitySearch();
         wrap.appendChild(card);
       });
     }
@@ -924,13 +947,17 @@
         });
         const originSearchInput = document.getElementById('originFacilitySearch');
         const originSearchBtn = document.getElementById('originFacilitySearchBtn');
+        const originResultCount = document.getElementById('originResultCount');
         const applyOriginFacilitySearch = () => {
           const current = originSelect.value || '';
-          originSelect.innerHTML = buildFacilityOptionsHtml(filterFacilitiesByTerm(originSearchInput.value || ''), current);
+          const rows = filterFacilitiesByTerm(originSearchInput.value || '');
+          originSelect.innerHTML = buildFacilityOptionsHtml(rows, current);
           originSelect.value = current;
+          setResultCount(originResultCount, rows.length);
         };
         originSearchBtn.addEventListener('click', () => applyOriginFacilitySearch());
         originSearchInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); applyOriginFacilitySearch(); } });
+        applyOriginFacilitySearch();
         loadRecentFacilityIds();
         refreshRecentFacilityUi();
 
