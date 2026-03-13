@@ -53,8 +53,8 @@
     .section { border: 1px solid var(--border-color); border-radius: 10px; padding: 0.9rem 1rem; margin-bottom: 0.95rem; background: var(--input-bg); }
     .section h6 { margin: 0 0 0.75rem; font-weight: 700; }
     .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0.8rem 1rem; }
-    .facility-picker-row { display: grid; grid-template-columns: minmax(240px, 50%) minmax(260px, 50%); gap: 0.6rem; align-items: end; }
-    .facility-search-col .form-label { margin-bottom: 0.3rem; }
+    .facility-picker-row { display: grid; grid-template-columns: minmax(240px, 50%) minmax(260px, 50%); gap: 0.6rem; align-items: start; }
+    .facility-col .form-label, .facility-search-col .form-label { margin-bottom: 0.3rem; }
     .facility-search-wrap { position: relative; width: 100%; }
     .facility-search-input { padding-right: 2.2rem; }
     .facility-search-btn {
@@ -198,9 +198,11 @@
       <div class="section">
         <h6>Origin</h6>
         <div class="field-wrap">
-          <label class="form-label fw-semibold">Origin Facility <span class="text-danger">*</span></label>
           <div class="facility-picker-row">
-            <select id="originSelect" class="form-select"></select>
+            <div class="facility-col">
+              <label class="form-label fw-semibold">Origin Facility <span class="text-danger">*</span></label>
+              <select id="originSelect" class="form-select"></select>
+            </div>
             <div class="facility-search-col">
               <label class="form-label fw-semibold">Facility Search</label>
               <div class="facility-search-wrap">
@@ -691,9 +693,11 @@
             </div>
           </div>
           <div class="mb-2">
-            <label class="form-label fw-semibold">Delivery Facility <span class="text-danger">*</span></label>
             <div class="facility-picker-row">
-              <select class="form-select" data-role="facility-select">${facilityOptionsHtml}</select>
+              <div class="facility-col">
+                <label class="form-label fw-semibold">Delivery Facility <span class="text-danger">*</span></label>
+                <select class="form-select" data-role="facility-select">${facilityOptionsHtml}</select>
+              </div>
               <div class="facility-search-col">
                 <label class="form-label fw-semibold">Facility Search</label>
                 <div class="facility-search-wrap">
