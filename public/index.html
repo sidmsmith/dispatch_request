@@ -925,7 +925,7 @@
       const ds = document.getElementById('deliveryStart').value, de = document.getElementById('deliveryEnd').value;
       if (!ps || !pe || !ds || !de) { submitBtn.disabled = true; setStatus(submitStatus, 'All pickup/delivery date fields are required.', 'error'); return false; }
       if (new Date(pe) <= new Date(ps)) { submitBtn.disabled = true; setStatus(submitStatus, 'Pickup End must be later than Pickup Start.', 'error'); return false; }
-      if (new Date(ds) <= new Date(pe)) { submitBtn.disabled = true; setStatus(submitStatus, 'Delivery Start must be later than Pickup End.', 'error'); return false; }
+      if (new Date(ds) <= new Date(ps)) { submitBtn.disabled = true; setStatus(submitStatus, 'Delivery Start must be later than Pickup Start.', 'error'); return false; }
       if (new Date(de) <= new Date(ds)) { submitBtn.disabled = true; setStatus(submitStatus, 'Delivery End must be later than Delivery Start.', 'error'); return false; }
       submitBtn.disabled = false;
       setStatus(submitStatus, '', 'info');
