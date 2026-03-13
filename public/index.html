@@ -53,9 +53,9 @@
     .section { border: 1px solid var(--border-color); border-radius: 10px; padding: 0.9rem 1rem; margin-bottom: 0.95rem; background: var(--input-bg); }
     .section h6 { margin: 0 0 0.75rem; font-weight: 700; }
     .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0.8rem 1rem; }
-    .facility-picker-row { display: grid; grid-template-columns: minmax(240px, 50%) minmax(260px, 50%); gap: 0.45rem; align-items: start; }
-    .facility-col, .facility-search-col { display: flex; flex-direction: column; gap: 0.2rem; }
-    .facility-label-row { display: flex; align-items: center; gap: 0.4rem; flex-wrap: wrap; min-height: 1.3rem; }
+    .facility-picker-row { display: grid; grid-template-columns: minmax(240px, 50%) minmax(260px, 50%); gap: 0.45rem; align-items: start; margin-top: 0; }
+    .facility-col, .facility-search-col { display: flex; flex-direction: column; gap: 0.1rem; margin: 0; }
+    .facility-label-row { display: flex; align-items: center; gap: 0.4rem; flex-wrap: wrap; min-height: 1.1rem; margin: 0; }
     .facility-label-row .form-label { margin: 0; }
     .facility-col .form-label, .facility-search-col .form-label { margin: 0; line-height: 1.15; }
     .facility-search-wrap { position: relative; width: 100%; }
@@ -96,7 +96,7 @@
       border-radius: 10px;
       padding: 0.7rem;
       margin-bottom: 0.75rem;
-      background: #ffffff;
+      background: var(--input-bg);
       position: relative;
       transition: box-shadow 0.12s ease, transform 0.12s ease, border-color 0.12s ease;
     }
@@ -340,7 +340,7 @@
       const logo = document.querySelector('.app-logo');
       if (logo && THEME_LOGOS[name]) {
         logo.src = THEME_LOGOS[name];
-        logo.style.display = '';
+        logo.style.display = name === 'manhattan' ? 'none' : '';
       }
       localStorage.setItem('dispatch_request_theme', name);
       document.querySelectorAll('.theme-option').forEach(o => o.classList.toggle('active', o.dataset.theme === name));
@@ -1058,8 +1058,8 @@
       const startupOrg = (params.get('ORG') || params.get('Organization') || '').trim();
       if (startupOrg) document.getElementById('orgInput').value = startupOrg;
       if ((params.get('Theme') || '').toUpperCase() === 'N') document.getElementById('themeContainer').style.display = 'none';
-      const savedTheme = localStorage.getItem('dispatch_request_theme') || 'light';
-      applyTheme(THEMES[savedTheme] ? savedTheme : 'light');
+      const savedTheme = localStorage.getItem('dispatch_request_theme') || 'manhattan';
+      applyTheme(THEMES[savedTheme] ? savedTheme : 'manhattan');
       if (startupOrg) await authenticate(); else setStatus(document.getElementById('authStatus'), 'Enter ORG to authenticate.', 'info');
     })();
   </script>
