@@ -4,3 +4,15 @@ node_modules/
 .DS_Store
 *.log
 .vercel
+
+# Python bytecode and virtual environments
+__pycache__/
+*.py[cod]
+*$py.class
+.Python
+.venv/
+venv/
+ENV/
+
+# Local Microsoft Word exports (keep on disk; do not commit)
+*.docx
