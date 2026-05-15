@@ -11,7 +11,7 @@ urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 app = Flask(__name__)
 
 APP_NAME = "dispatch-request"
-APP_VERSION = "1.0.2"
+APP_VERSION = "1.0.3"
 
 USAGE_INGEST_URL = os.getenv("MANHATTAN_USAGE_INGEST_URL", "").strip()
 USAGE_INGEST_SECRET = os.getenv("MANHATTAN_USAGE_INGEST_SECRET", "").strip()
@@ -120,7 +120,7 @@ def asset_manager_search(org, token, entity_name, payload):
 
 @app.route("/api/app_opened", methods=["POST"])
 def app_opened():
-    emit_usage_event("dispatch_request_app_opened")
+    emit_usage_event("app_opened")
     return jsonify({"success": True})
 
 
@@ -130,12 +130,13 @@ def auth():
     if not org:
         return jsonify({"success": False, "error": "ORG required"})
 
+    emit_usage_event("auth_attempt", {"org": org})
     token = get_manhattan_token(org)
     if token:
-        emit_usage_event("dispatch_request_auth", {"org": org, "success": True})
+        emit_usage_event("auth_success", {"org": org, "token_received": True})
         return jsonify({"success": True, "token": token})
 
-    emit_usage_event("dispatch_request_auth", {"org": org, "success": False})
+    emit_usage_event("auth_failed", {"org": org, "token_received": False, "error": "Auth failed"})
     return jsonify({"success": False, "error": "Auth failed"})
 
 
