@@ -10,11 +10,11 @@ urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 app = Flask(__name__)
 
-APP_NAME = "dispatch_request"
-APP_VERSION = "1.0.0"
+APP_NAME = "dispatch-request"
+APP_VERSION = "1.0.2"
 
-HA_WEBHOOK_URL = os.getenv("HA_WEBHOOK_URL", "http://sidmsmith.zapto.org:8123/api/webhook/manhattan_app_usage")
-HA_HEADERS = {"Content-Type": "application/json"}
+USAGE_INGEST_URL = os.getenv("MANHATTAN_USAGE_INGEST_URL", "").strip()
+USAGE_INGEST_SECRET = os.getenv("MANHATTAN_USAGE_INGEST_SECRET", "").strip()
 
 AUTH_HOST = os.getenv("MANHATTAN_AUTH_HOST", "salep-auth.sce.manh.com")
 API_HOST = os.getenv("MANHATTAN_API_HOST", "salep.sce.manh.com")
@@ -28,17 +28,30 @@ if not PASSWORD or not CLIENT_SECRET:
     raise Exception("Missing MANHATTAN_PASSWORD or MANHATTAN_SECRET environment variables")
 
 
-def send_ha_message(payload):
+def forward_usage_event(payload):
+    """POST usage JSON to Manhattan app usage dashboard ingest (Neon)."""
+    if not USAGE_INGEST_URL:
+        print("[usage] MANHATTAN_USAGE_INGEST_URL not set; event not recorded")
+        return
+    headers = {"Content-Type": "application/json"}
+    if USAGE_INGEST_SECRET:
+        headers["Authorization"] = f"Bearer {USAGE_INGEST_SECRET}"
     try:
-        full_payload = {
-            "app_name": APP_NAME,
-            "app_version": APP_VERSION,
-            "timestamp": datetime.utcnow().isoformat(),
-            **payload,
-        }
-        requests.post(HA_WEBHOOK_URL, json=full_payload, headers=HA_HEADERS, timeout=5)
-    except Exception:
-        pass
+        requests.post(USAGE_INGEST_URL, json=payload, headers=headers, timeout=8)
+    except Exception as e:
+        print(f"[usage] Forward failed: {e}")
+
+
+def emit_usage_event(event_name, metadata=None):
+    metadata = metadata or {}
+    payload = {
+        "event_name": event_name,
+        "app_name": APP_NAME,
+        "app_version": APP_VERSION,
+        **metadata,
+        "timestamp": datetime.utcnow().isoformat(),
+    }
+    forward_usage_event(payload)
 
 
 def get_manhattan_token(org):
@@ -107,7 +120,7 @@ def asset_manager_search(org, token, entity_name, payload):
 
 @app.route("/api/app_opened", methods=["POST"])
 def app_opened():
-    send_ha_message({"event": "dispatch_request_app_opened"})
+    emit_usage_event("dispatch_request_app_opened")
     return jsonify({"success": True})
 
 
@@ -119,10 +132,10 @@ def auth():
 
     token = get_manhattan_token(org)
     if token:
-        send_ha_message({"event": "dispatch_request_auth", "org": org, "success": True})
+        emit_usage_event("dispatch_request_auth", {"org": org, "success": True})
         return jsonify({"success": True, "token": token})
 
-    send_ha_message({"event": "dispatch_request_auth", "org": org, "success": False})
+    emit_usage_event("dispatch_request_auth", {"org": org, "success": False})
     return jsonify({"success": False, "error": "Auth failed"})
 
 
@@ -936,15 +949,15 @@ def submit_request():
             }
         )
 
-    send_ha_message(
+    emit_usage_event(
+        "dispatch_request_submit",
         {
-            "event": "dispatch_request_submit",
             "org": org,
             "to_numbers": created_numbers,
             "shipment_id": shipment_id,
             "trip_id": trip_id,
             "payload_keys": list(payload.keys()) if isinstance(payload, dict) else [],
-        }
+        },
     )
     return jsonify(
         {
@@ -968,6 +981,15 @@ def submit_request():
             "echo": payload,
         }
     )
+
+
+@app.route("/api/usage-track", methods=["POST"])
+def usage_track():
+    data = request.json or {}
+    event_name = data.get("event_name")
+    metadata = data.get("metadata", {})
+    emit_usage_event(event_name, metadata)
+    return jsonify({"success": True})
 
 
 @app.route("/", defaults={"path": ""})
