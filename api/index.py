@@ -45,10 +45,10 @@ def forward_usage_event(payload):
 def emit_usage_event(event_name, metadata=None):
     metadata = metadata or {}
     payload = {
+        **metadata,
         "event_name": event_name,
         "app_name": APP_NAME,
         "app_version": APP_VERSION,
-        **metadata,
         "timestamp": datetime.utcnow().isoformat(),
     }
     forward_usage_event(payload)
